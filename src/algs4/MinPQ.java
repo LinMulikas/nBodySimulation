@@ -1,13 +1,13 @@
-/******************************************************************************
- *  Compilation:  javac MinPQ.java
- *  Execution:    java MinPQ < input.txt
+package algs4; /******************************************************************************
+ *  Compilation:  javac algs4.MinPQ.java
+ *  Execution:    java algs4.MinPQ < input.txt
  *  Dependencies: StdIn.java StdOut.java
  *  Data files:   https://algs4.cs.princeton.edu/24pq/tinyPQ.txt
  *  
  *  Generic min priority queue implementation with a binary heap.
  *  Can be used with a comparator instead of the natural order.
  *
- *  % java MinPQ < tinyPQ.txt
+ *  % java algs4.MinPQ < tinyPQ.txt
  *  E A E (6 left on pq)
  *
  *  We use a one-based array to simplify parent and child calculations.
@@ -25,7 +25,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 /**
- *  The {@code MinPQ} class represents a priority queue of generic keys.
+ *  The {@code algs4.MinPQ} class represents a priority queue of generic keys.
  *  It supports the usual <em>insert</em> and <em>delete-the-minimum</em>
  *  operations, along with methods for peeking at the minimum key,
  *  testing if the priority queue is empty, and iterating through
@@ -183,6 +183,10 @@ public class MinPQ<Key> implements Iterable<Key> {
         return min;
     }
 
+    public Key peer(){
+        Key min = pq[1];
+        return min;
+    }
 
    /***************************************************************************
     * Helper functions to restore the heap invariant.
@@ -281,7 +285,7 @@ public class MinPQ<Key> implements Iterable<Key> {
     }
 
     /**
-     * Unit tests the {@code MinPQ} data type.
+     * Unit tests the {@code algs4.MinPQ} data type.
      *
      * @param args the command-line arguments
      */

@@ -1,5 +1,5 @@
-/******************************************************************************
- *  Compilation:  javac Particle.java
+package algs4; /******************************************************************************
+ *  Compilation:  javac algs4.Particle.java
  *  Execution:    none
  *  Dependencies: StdDraw.java
  *
@@ -14,7 +14,7 @@ import edu.princeton.cs.algs4.StdRandom;
 import java.awt.Color;
 
 /**
- * The {@code Particle} class represents a particle moving in the unit box,
+ * The {@code algs4.Particle} class represents a particle moving in the unit box,
  * with a given position, velocity, radius, and mass. Methods are provided
  * for moving the particle and for predicting and resolvling elastic
  * collisions with vertical walls, horizontal walls, and other particles.
@@ -83,8 +83,6 @@ public class Particle{
 			if(p != this){
 				if(this.distanceTo(p) >= (this.radius + p.radius)){
 					this.addForceTo(p, G);
-				}else{
-				
 				}
 			}
 		}
@@ -115,6 +113,14 @@ public class Particle{
 		this.calNetForce(particles, G);
 		this.calAcceleration();
 		
+		this.vx += this.ax * dt;
+		this.vy += this.ay * dt;
+		
+		rx += vx * dt + 0.5 * this.ax * dt * dt;
+		ry += vy * dt + 0.5 * this.ay * dt * dt;
+	}
+	
+	public void move(double dt){
 		this.vx += this.ax * dt;
 		this.vy += this.ay * dt;
 		

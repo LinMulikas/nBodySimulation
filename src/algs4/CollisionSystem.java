@@ -1,8 +1,8 @@
-/******************************************************************************
- *  Compilation:  javac CollisionSystem.java
- *  Execution:    java CollisionSystem n               (n random particles)
- *                java CollisionSystem < input.txt     (from a file) 
- *  Dependencies: StdDraw.java Particle.java MinPQ.java
+package algs4; /******************************************************************************
+ *  Compilation:  javac algs4.CollisionSystem.java
+ *  Execution:    java algs4.CollisionSystem n               (n random particles)
+ *                java algs4.CollisionSystem < input.txt     (from a file)
+ *  Dependencies: StdDraw.java algs4.Particle.java algs4.MinPQ.java
  *  Data files:   https://algs4.cs.princeton.edu/61event/diffusion.txt
  *                https://algs4.cs.princeton.edu/61event/diffusion2.txt
  *                https://algs4.cs.princeton.edu/61event/diffusion3.txt
@@ -22,7 +22,7 @@ import edu.princeton.cs.algs4.StdIn;
 import java.awt.Color;
 
 /**
- * The {@code CollisionSystem} class represents a collection of particles
+ * The {@code algs4.CollisionSystem} class represents a collection of particles
  * moving in the unit box, according to the laws of elastic collision.
  * This event-based simulation relies on a priority queue.
  * <p>
@@ -55,6 +55,7 @@ public class CollisionSystem{
 		if(a == null) return;
 		
 		// particle-particle collisions
+		
 		for(int i = 0; i < particles.length; i++){
 			double dt = a.timeToHit(particles[i]);
 			if(t + dt <= limit) pq.insert(new Event(t + dt, a, particles[i]));
@@ -65,6 +66,36 @@ public class CollisionSystem{
 		double dtY = a.timeToHitHorizontalWall();
 		if(t + dtX <= limit) pq.insert(new Event(t + dtX, a, null));
 		if(t + dtY <= limit) pq.insert(new Event(t + dtY, null, a));
+	}
+	
+	private void checkPartCollision(Particle a, Particle[] particles, double tick){
+		for(Particle p : particles){
+			double dt = a.timeToHit(p);
+			if(dt <= tick){
+				pq.insert(new Event(t + dt, a, p));
+			}
+		}
+	}
+	
+	private void checkWallCollision(Particle a){
+		double dt_x = a.timeToHitVerticalWall();
+		double dt_y = a.timeToHitHorizontalWall();
+		pq.insert(new Event(t + dt_x, a, null));
+		pq.insert(new Event(t + dt_y, null, a));
+	}
+	
+	/**
+	 * 检测当前质点一段时间后的状态，并把可能发生的事件加入pq里
+	 *
+	 * @param a
+	 */
+	private void predictByTick(Particle a){
+		if(a == null) return;
+		double tick = 1.0 / HZ;
+		// particle-particle collisions
+		checkPartCollision(a, particles, tick);
+		// particle-wall collisions
+		checkWallCollision(a);
 	}
 	
 	// redraw all particles
@@ -82,6 +113,47 @@ public class CollisionSystem{
 		
 	}
 	
+	private void reDraw(){
+		StdDraw.clear();
+		
+		for(Particle p : particles){
+			p.draw();
+		}
+		StdDraw.show();
+		StdDraw.pause(20);
+		
+		if(pq.peer().time > t + 2){
+			pq.insert(new Event(t + 1.0 / HZ, null, null));
+		}
+	}
+	
+	public void simulateUniverse(){
+		pq = new MinPQ<Event>();
+		
+		for(Particle p : particles){
+			predictByTick(p);
+		}
+		
+		pq.insert(new Event(0, null, null));
+		
+		while(!pq.isEmpty()){
+			Event event = pq.delMin();
+			if(event.isValid()){
+				t = event.time;
+				eventHandle(event);
+				predictByTick(event.a);
+				predictByTick(event.b);
+			}
+		}
+	}
+	
+	public void moveEvent(Particle[] particles){
+		for(Particle p : particles){
+			pq.insert(new Event(t + 2, p, null, false));
+			pq.insert(new Event(t + 4, p, null, false));
+			pq.insert(new Event(t + 6, p, null, false));
+		}
+	}
 	
 	/**
 	 * Simulates the system of particles for the specified amount of time.
@@ -112,6 +184,7 @@ public class CollisionSystem{
 			for(int i = 0; i < particles.length; i++){
 				particles[i].move(e.time - t, particles, G);
 			}
+			
 			t = e.time;
 			
 			// process event
@@ -126,6 +199,26 @@ public class CollisionSystem{
 		}
 	}
 	
+	public void eventHandle(Event e){
+		Particle a = e.a;
+		Particle b = e.b;
+		
+		if(a != null && b != null) a.bounceOff(b);              // particle-particle collision
+		else if(a != null) a.bounceOffVerticalWall();   // particle-wall collision
+		else if(b != null) b.bounceOffHorizontalWall(); // particle-wall collision
+		else reDraw();               // redraw event
+		
+		moveAll(particles);
+		
+		predictByTick(a);
+		predictByTick(b);
+	}
+	
+	private void moveAll(Particle[] particles){
+		for(Particle p : particles){
+			p.move(2, particles, G);
+		}
+	}
 	
 	/***************************************************************************
 	 *  An event during a particle collision simulation. Each event contains
@@ -141,7 +234,7 @@ public class CollisionSystem{
 		private final double time;         // time that event is scheduled to occur
 		private final Particle a, b;       // particles involved in event, possibly null
 		private final int countA, countB;  // collision counts at event creation
-		
+		public boolean collission = true;
 		
 		// create a new event to occur at time t involving a and b
 		public Event(double t, Particle a, Particle b){
@@ -153,6 +246,18 @@ public class CollisionSystem{
 			if(b != null) countB = b.count();
 			else countB = -1;
 		}
+		
+		public Event(double t, Particle a, Particle b, boolean collision){
+			this.time = t;
+			this.a = a;
+			this.b = b;
+			if(a != null) countA = a.count();
+			else countA = -1;
+			if(b != null) countB = b.count();
+			else countB = -1;
+			this.collission = collision;
+		}
+		
 		
 		// compare times when two events will occur
 		public int compareTo(Event that){
@@ -170,7 +275,7 @@ public class CollisionSystem{
 	
 	
 	/**
-	 * Unit tests the {@code CollisionSystem} data type.
+	 * Unit tests the {@code algs4.CollisionSystem} data type.
 	 * Reads in the particle collision system from a standard input
 	 * (or generates {@code N} random particles if a command-line integer
 	 * is specified); simulates the system.
@@ -215,7 +320,8 @@ public class CollisionSystem{
 		
 		// create collision system and simulate
 		CollisionSystem system = new CollisionSystem(particles);
-		system.simulate(10000);
+		system.simulate(1000);
 	}
+	
 	
 }
