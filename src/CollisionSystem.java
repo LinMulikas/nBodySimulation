@@ -109,9 +109,9 @@ public class CollisionSystem{
 			Particle b = e.b;
 			
 			// physical collision, so update positions, and then simulation clock
-			for(int i = 0; i < particles.length; i++)
+			for(int i = 0; i < particles.length; i++){
 				particles[i].move(e.time - t, particles, G);
-			
+			}
 			t = e.time;
 			
 			// process event

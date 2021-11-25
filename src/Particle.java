@@ -71,9 +71,9 @@ public class Particle{
 	
 	public void addForceTo(Particle particle, double G){
 		double r = sqrtDistanceTo(particle);
-		double netForce = G * this.mass * particle.mass / (r * r * r);
-		this.fx += netForce * (particle.rx - this.rx)/(this.distanceTo(particle));
-		this.fy += netForce * (particle.ry - this.ry)/(this.distanceTo(particle));
+		double netForce = G * this.mass * particle.mass / (r * r);
+		this.fx += netForce * (particle.rx - this.rx) / (this.distanceTo(particle));
+		this.fy += netForce * (particle.ry - this.ry) / (this.distanceTo(particle));
 	}
 	
 	public void calNetForce(Particle[] particles, double G){
@@ -81,7 +81,11 @@ public class Particle{
 		this.fy = 0;
 		for(Particle p : particles){
 			if(p != this){
-				this.addForceTo(p, G);
+				if(this.distanceTo(p) >= (this.radius + p.radius)){
+					this.addForceTo(p, G);
+				}else{
+				
+				}
 			}
 		}
 	}
@@ -118,7 +122,7 @@ public class Particle{
 		ry += vy * dt + 0.5 * this.ay * dt * dt;
 	}
 	
-	private void calAcceleration(){
+	public void calAcceleration(){
 		this.ax = this.fx / mass;
 		this.ay = this.fy / mass;
 	}
