@@ -53,37 +53,31 @@ public class CollisionSystem{
 	}
 	
 	// updates priority queue with all new events for particle a
-	private void predict(Particle a, double limit){
+	private void predict(Particle a){
 		if(a == null) return;
 		
 		// particle-particle collisions
 		for(int i = 0; i < particles.length; i++){
 			double dt = a.timeToHit(particles[i]);
-			if(t + dt < limit) pq.insert(new Event(t + dt, a, particles[i]));
+			if(dt <= 1.0 / HZ) pq.insert(new Event(t + dt, a, particles[i]));
 		}
 		
 		// particle-wall collisions
 		double dtX = a.timeToHitVerticalWall();
 		double dtY = a.timeToHitHorizontalWall();
-		if(t + dtX < limit) pq.insert(new Event(t + dtX, a, null));
-		if(t + dtY < limit) pq.insert(new Event(t + dtY, null, a));
+		if(dtX <= 1.0 / HZ) pq.insert(new Event(t + dtX, a, null));
+		if(dtY <= 1.0 / HZ) pq.insert(new Event(t + dtY, null, a));
 	}
 	
 	
 	// redraw all particles
-	private void redraw(double limit){
+	private void redraw(){
 		StdDraw.clear();
 		for(int i = 0; i < particles.length; i++){
 			particles[i].draw();
-			particles[i].calNetForce(particles, G);
-			particles[i].calAcceleration();
 		}
 		StdDraw.show();
 		StdDraw.pause(20);
-		
-		if(t < limit){
-			pq.insert(new Event(t + 1.0 / HZ, null, null));
-		}
 		
 	}
 	
@@ -98,27 +92,27 @@ public class CollisionSystem{
 		// initialize PQ with collision events and redraw event
 		pq = new MinPQ<Event>();
 		
-		
-		for(int i = 0; i < particles.length; i++){
-			predict(particles[i], limit);
-		}
-		
 		pq.insert(new Event(0, null, null));        // redraw event
+		
+		for(Particle particle : particles){
+			predict(particle);
+		}
 		
 		// the main event-driven simulation loop
 		while(!pq.isEmpty()){
 			
 			// get impending event, discard if invalidated
 			Event e = pq.delMin();
-			if(!e.isValid(t)) continue;
+			
 			Particle a = e.a;
 			Particle b = e.b;
 			
 			// physical collision, so update positions, and then simulation clock
 			for(int i = 0; i < particles.length; i++){
-				particles[i].move(e.time - t);
+				particles[i].move(e.time - t, particles, G);
 			}
 			
+			double dt = e.time - t;
 			t = e.time;
 			
 			// process event
@@ -132,12 +126,21 @@ public class CollisionSystem{
 				b.bounceOffHorizontalWall();
 			}// particle-wall collision
 			else{
-				redraw(limit);
+				redraw();
 			}               // redraw event
 			
+			while(!pq.isEmpty()){
+				pq.delMin();
+			}
+			
+			if(t < limit){
+				pq.insert(new Event(t + 1.0 / HZ, null, null));
+			}
+			
 			// update the priority queue with new collisions involving a or b
-			predict(a, limit);
-			predict(b, limit);
+			for(Particle particle : particles){
+				predict(particle);
+			}
 		}
 	}
 	

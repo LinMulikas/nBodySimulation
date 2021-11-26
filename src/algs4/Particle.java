@@ -123,8 +123,8 @@ public class Particle{
 		ry = StdRandom.uniform(0.0, 1.0);
 		vx = StdRandom.uniform(-0.002, 0.002);
 		vy = StdRandom.uniform(-0.002, 0.002);
-		radius = 0.05;
-		mass = 10000;
+		radius = 0.02;
+			mass = 70000;
 		color = Color.BLACK;
 	}
 	
@@ -135,16 +135,15 @@ public class Particle{
 	 * @param dt the amount of time
 	 */
 	public void move(double dt, Particle[] particles, double G){
-		this.fx = this.calNetForce_x(particles, G);
-		this.fy = this.calNetForce_y(particles, G);
-		
-		this.calAcceleration();
-		
 		this.vx += this.ax * dt;
 		this.vy += this.ay * dt;
 		
 		rx += vx * dt + 0.5 * this.ax * dt * dt;
 		ry += vy * dt + 0.5 * this.ay * dt * dt;
+		
+		
+		this.calNetForce(particles, G);
+		this.calAcceleration();
 	}
 	
 	public void move(double dt){
@@ -153,6 +152,7 @@ public class Particle{
 
 		rx += vx * dt + 0.5 * this.ax * dt * dt;
 		ry += vy * dt + 0.5 * this.ay * dt * dt;
+		
 		
 		
 //		rx += vx * dt;

@@ -64,7 +64,7 @@ public class MinPQ<Key> implements Iterable<Key> {
         pq = (Key[]) new Object[initCapacity + 1];
         n = 0;
     }
-
+    
     /**
      * Initializes an empty priority queue.
      */
