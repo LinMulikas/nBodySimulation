@@ -16,6 +16,7 @@ package algs4; /****************************************************************
  *
  ******************************************************************************/
 
+import edu.princeton.cs.algs4.Queue;
 import edu.princeton.cs.algs4.StdDraw;
 import edu.princeton.cs.algs4.StdIn;
 
@@ -39,6 +40,7 @@ public class CollisionSystem{
 	private MinPQ<Event> pq;          // the priority queue
 	private double t = 0.0;           // simulation clock time
 	private Particle[] particles;     // the array of particles
+	private Queue<Event> queue;
 	
 	/**
 	 * Initializes a system with the specified collection of particles.
@@ -55,54 +57,26 @@ public class CollisionSystem{
 		if(a == null) return;
 		
 		// particle-particle collisions
-		
 		for(int i = 0; i < particles.length; i++){
 			double dt = a.timeToHit(particles[i]);
-			if(t + dt <= limit) pq.insert(new Event(t + dt, a, particles[i]));
+			if(t + dt < limit) pq.insert(new Event(t + dt, a, particles[i]));
 		}
 		
 		// particle-wall collisions
 		double dtX = a.timeToHitVerticalWall();
 		double dtY = a.timeToHitHorizontalWall();
-		if(t + dtX <= limit) pq.insert(new Event(t + dtX, a, null));
-		if(t + dtY <= limit) pq.insert(new Event(t + dtY, null, a));
+		if(t + dtX < limit) pq.insert(new Event(t + dtX, a, null));
+		if(t + dtY < limit) pq.insert(new Event(t + dtY, null, a));
 	}
 	
-	private void checkPartCollision(Particle a, Particle[] particles, double tick){
-		for(Particle p : particles){
-			double dt = a.timeToHit(p);
-			if(dt <= tick){
-				pq.insert(new Event(t + dt, a, p));
-			}
-		}
-	}
-	
-	private void checkWallCollision(Particle a){
-		double dt_x = a.timeToHitVerticalWall();
-		double dt_y = a.timeToHitHorizontalWall();
-		pq.insert(new Event(t + dt_x, a, null));
-		pq.insert(new Event(t + dt_y, null, a));
-	}
-	
-	/**
-	 * 检测当前质点一段时间后的状态，并把可能发生的事件加入pq里
-	 *
-	 * @param a
-	 */
-	private void predictByTick(Particle a){
-		if(a == null) return;
-		double tick = 1.0 / HZ;
-		// particle-particle collisions
-		checkPartCollision(a, particles, tick);
-		// particle-wall collisions
-		checkWallCollision(a);
-	}
 	
 	// redraw all particles
 	private void redraw(double limit){
 		StdDraw.clear();
 		for(int i = 0; i < particles.length; i++){
 			particles[i].draw();
+			particles[i].calNetForce(particles, G);
+			particles[i].calAcceleration();
 		}
 		StdDraw.show();
 		StdDraw.pause(20);
@@ -113,47 +87,6 @@ public class CollisionSystem{
 		
 	}
 	
-	private void reDraw(){
-		StdDraw.clear();
-		
-		for(Particle p : particles){
-			p.draw();
-		}
-		StdDraw.show();
-		StdDraw.pause(20);
-		
-		if(pq.peer().time > t + 2){
-			pq.insert(new Event(t + 1.0 / HZ, null, null));
-		}
-	}
-	
-	public void simulateUniverse(){
-		pq = new MinPQ<Event>();
-		
-		for(Particle p : particles){
-			predictByTick(p);
-		}
-		
-		pq.insert(new Event(0, null, null));
-		
-		while(!pq.isEmpty()){
-			Event event = pq.delMin();
-			if(event.isValid()){
-				t = event.time;
-				eventHandle(event);
-				predictByTick(event.a);
-				predictByTick(event.b);
-			}
-		}
-	}
-	
-	public void moveEvent(Particle[] particles){
-		for(Particle p : particles){
-			pq.insert(new Event(t + 2, p, null, false));
-			pq.insert(new Event(t + 4, p, null, false));
-			pq.insert(new Event(t + 6, p, null, false));
-		}
-	}
 	
 	/**
 	 * Simulates the system of particles for the specified amount of time.
@@ -164,6 +97,7 @@ public class CollisionSystem{
 		
 		// initialize PQ with collision events and redraw event
 		pq = new MinPQ<Event>();
+		
 		
 		for(int i = 0; i < particles.length; i++){
 			predict(particles[i], limit);
@@ -176,22 +110,30 @@ public class CollisionSystem{
 			
 			// get impending event, discard if invalidated
 			Event e = pq.delMin();
-			if(!e.isValid()) continue;
+			if(!e.isValid(t)) continue;
 			Particle a = e.a;
 			Particle b = e.b;
 			
 			// physical collision, so update positions, and then simulation clock
 			for(int i = 0; i < particles.length; i++){
-				particles[i].move(e.time - t, particles, G);
+				particles[i].move(e.time - t);
 			}
 			
 			t = e.time;
 			
 			// process event
-			if(a != null && b != null) a.bounceOff(b);              // particle-particle collision
-			else if(a != null && b == null) a.bounceOffVerticalWall();   // particle-wall collision
-			else if(a == null && b != null) b.bounceOffHorizontalWall(); // particle-wall collision
-			else if(a == null && b == null) redraw(limit);               // redraw event
+			if(a != null && b != null){
+				a.bounceOff(b);
+			}             // particle-particle collision
+			else if(a != null){
+				a.bounceOffVerticalWall();
+			}  // particle-wall collision
+			else if(b != null){
+				b.bounceOffHorizontalWall();
+			}// particle-wall collision
+			else{
+				redraw(limit);
+			}               // redraw event
 			
 			// update the priority queue with new collisions involving a or b
 			predict(a, limit);
@@ -199,26 +141,6 @@ public class CollisionSystem{
 		}
 	}
 	
-	public void eventHandle(Event e){
-		Particle a = e.a;
-		Particle b = e.b;
-		
-		if(a != null && b != null) a.bounceOff(b);              // particle-particle collision
-		else if(a != null) a.bounceOffVerticalWall();   // particle-wall collision
-		else if(b != null) b.bounceOffHorizontalWall(); // particle-wall collision
-		else reDraw();               // redraw event
-		
-		moveAll(particles);
-		
-		predictByTick(a);
-		predictByTick(b);
-	}
-	
-	private void moveAll(Particle[] particles){
-		for(Particle p : particles){
-			p.move(2, particles, G);
-		}
-	}
 	
 	/***************************************************************************
 	 *  An event during a particle collision simulation. Each event contains
@@ -234,7 +156,7 @@ public class CollisionSystem{
 		private final double time;         // time that event is scheduled to occur
 		private final Particle a, b;       // particles involved in event, possibly null
 		private final int countA, countB;  // collision counts at event creation
-		public boolean collission = true;
+		public boolean collision = true;
 		
 		// create a new event to occur at time t involving a and b
 		public Event(double t, Particle a, Particle b){
@@ -247,17 +169,6 @@ public class CollisionSystem{
 			else countB = -1;
 		}
 		
-		public Event(double t, Particle a, Particle b, boolean collision){
-			this.time = t;
-			this.a = a;
-			this.b = b;
-			if(a != null) countA = a.count();
-			else countA = -1;
-			if(b != null) countB = b.count();
-			else countB = -1;
-			this.collission = collision;
-		}
-		
 		
 		// compare times when two events will occur
 		public int compareTo(Event that){
@@ -265,7 +176,7 @@ public class CollisionSystem{
 		}
 		
 		// has any collision occurred between when event was created and now?
-		public boolean isValid(){
+		public boolean isValid(double t){
 			if(a != null && a.count() != countA) return false;
 			if(b != null && b.count() != countB) return false;
 			return true;
@@ -320,7 +231,7 @@ public class CollisionSystem{
 		
 		// create collision system and simulate
 		CollisionSystem system = new CollisionSystem(particles);
-		system.simulate(1000);
+		system.simulate(1000000);
 	}
 	
 	

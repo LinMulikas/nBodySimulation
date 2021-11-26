@@ -77,16 +77,41 @@ public class Particle{
 	}
 	
 	public void calNetForce(Particle[] particles, double G){
-		this.fx = 0;
-		this.fy = 0;
+		this.fx = this.calNetForce_x(particles, G);
+		this.fy = this.calNetForce_y(particles, G);
+	}
+	private double calNetForce_x(Particle[] particles, double G){
+		double netF_x = 0;
 		for(Particle p : particles){
 			if(p != this){
-				if(this.distanceTo(p) >= (this.radius + p.radius)){
-					this.addForceTo(p, G);
+				if(this.distanceTo(p) >= this.radius + p.radius){
+					netF_x += this.getNetForceTo(p, G) * (p.rx - this.rx) / (this.distanceTo(p));
 				}
 			}
 		}
+		return netF_x;
 	}
+	
+	private double calNetForce_y(Particle[] particles, double G){
+		double netF_y = 0;
+		for(Particle p : particles){
+			if(p != this){
+				if(this.distanceTo(p) >= this.radius + p.radius){
+					netF_y += this.getNetForceTo(p, G) * (p.ry - this.ry) / (this.distanceTo(p));
+				}
+			}
+		}
+		return netF_y;
+	}
+	
+	public double getNetForceTo(Particle particle, double G){
+		double r = sqrtDistanceTo(particle);
+		double netForce = G * this.mass * particle.mass / (r * r);
+		return netForce;
+	}
+	
+	
+
 	
 	/**
 	 * Initializes a particle with a random position and velocity.
@@ -96,10 +121,10 @@ public class Particle{
 	public Particle(){
 		rx = StdRandom.uniform(0.0, 1.0);
 		ry = StdRandom.uniform(0.0, 1.0);
-		vx = StdRandom.uniform(-0.005, 0.005);
-		vy = StdRandom.uniform(-0.005, 0.005);
+		vx = StdRandom.uniform(-0.002, 0.002);
+		vy = StdRandom.uniform(-0.002, 0.002);
 		radius = 0.05;
-		mass = 0.5;
+		mass = 10000;
 		color = Color.BLACK;
 	}
 	
@@ -110,7 +135,9 @@ public class Particle{
 	 * @param dt the amount of time
 	 */
 	public void move(double dt, Particle[] particles, double G){
-		this.calNetForce(particles, G);
+		this.fx = this.calNetForce_x(particles, G);
+		this.fy = this.calNetForce_y(particles, G);
+		
 		this.calAcceleration();
 		
 		this.vx += this.ax * dt;
@@ -123,9 +150,13 @@ public class Particle{
 	public void move(double dt){
 		this.vx += this.ax * dt;
 		this.vy += this.ay * dt;
-		
+
 		rx += vx * dt + 0.5 * this.ax * dt * dt;
 		ry += vy * dt + 0.5 * this.ay * dt * dt;
+		
+		
+//		rx += vx * dt;
+//		ry += vy * dt;
 	}
 	
 	public void calAcceleration(){
