@@ -34,8 +34,8 @@ import java.awt.Color;
  * @author Robert Sedgewick
  * @author Kevin Wayne
  */
-public class CollisionSystem{
-	private static final double HZ = 5;    // number of redraw events per clock tick
+public class Co1{
+	private static final double HZ = 0.5;    // number of redraw events per clock tick
 	public final double G = 6.67e-11;
 	private MinPQ<Event> pq;          // the priority queue
 	private double t = 0.0;           // simulation clock time
@@ -48,31 +48,13 @@ public class CollisionSystem{
 	 *
 	 * @param particles the array of particles
 	 */
-	public CollisionSystem(Particle[] particles){
+	public Co1(Particle[] particles){
 		this.particles = particles.clone();   // defensive copy
 	}
-	
-	private void calculateNext(Particle a, Particle[] particles, double G, double dt){
-		if(a == null){
-			return;
-		}
-		
-		a.calNetForce(particles, G);
-		a.calAcceleration();
-		
-		// 碰撞检测（待写）
-		
-		
-		a.moveDirectly(dt);
-	}
-	
 	
 	// updates priority queue with all new events for particle a
 	private void predict(Particle a){
 		if(a == null) return;
-		
-		a.calNetForce(particles, G);
-		a.calAcceleration();
 		
 		// particle-particle collisions
 		for(int i = 0; i < particles.length; i++){
@@ -87,48 +69,6 @@ public class CollisionSystem{
 		if(dtY <= 1.0 / HZ) pq.insert(new Event(t + dtY, null, a));
 	}
 	
-	private void predictParticleCollision(Particle a, Particle b, double nextTime, MinPQ<Event> pq, double t){
-		if(a == null) return;
-		
-		double dt = a.timeToHit(b);
-		if(dt >= 0 && (t + dt <= nextTime + 0.0000000001)) pq.insert(new Event(t + dt, a, b));
-	}
-	
-	private void predictWallCollision(Particle a, double nextTime, MinPQ<Event> pq, double t){
-		if(a == null) return;
-		
-		// particle-wall collisions
-		double dtX = a.timeToHitVerticalWall();
-		double dtY = a.timeToHitHorizontalWall();
-		if(dtX >= 0 && (t + dtX <= nextTime + 0.0000000001)){
-			pq.insert(new Event(t + dtX, a, null));
-			
-		}
-		if(dtY >= 0 && (t + dtY <= nextTime + 0.00000001)){
-			pq.insert(new Event(t + dtY, null, a));
-			
-		}
-	}
-	
-	private void preTick(Particle a, double limit){
-		if(a == null) return;
-		
-		a.calNetForce(particles, G);
-		a.calAcceleration();
-		
-		// particle-particle collisions
-		for(int i = 0; i < particles.length; i++){
-			double dt = a.timeToHit(particles[i]);
-			if(dt >= 0 && (t + dt <= limit + 0.000000001)) pq.insert(new Event(t + dt, a, particles[i]));
-		}
-		
-		// particle-wall collisions
-		double dtX = a.timeToHitVerticalWall();
-		double dtY = a.timeToHitHorizontalWall();
-		if(dtX >= 0 && (t + dtX <= limit + 0.0000001)) pq.insert(new Event(t + dtX, a, null));
-		if(dtY >= 0 && (t + dtY <= limit + 0.0000001)) pq.insert(new Event(t + dtY, null, a));
-	}
-	
 	
 	// redraw all particles
 	private void redraw(){
@@ -138,191 +78,6 @@ public class CollisionSystem{
 		}
 		StdDraw.show();
 		StdDraw.pause(20);
-		pq.insert(new Event(t + 1.0 / HZ, null, null));
-		
-	}
-	
-	/**
-	 * 双驱，清洗pq
-	 *
-	 * @param tick
-	 */
-	
-	public void continuousSimulation(double tick){
-		MinPQ<Event> pq = new MinPQ<>();
-		double nextTime;
-		double t0 = t;
-		pq.insert(new Event(0, null, null));
-		
-		while(true){
-			nextTime = t + tick;
-			// 似乎会造成浮点数误差而出现的重绘错误的优先于了碰撞事件
-			while(t < nextTime){
-				
-				pq.insert(new Event(t + tick / HZ, null, null));
-				
-				// 计算崭新的加速状态
-				for(int i = 0; i < particles.length; i++){
-					particles[i].calNetForce(particles, G);
-					particles[i].calAcceleration();
-				}
-				// 插入碰撞事件
-				for(int i = 0; i < particles.length; i++){
-					predictWallCollision(particles[i], nextTime, pq, t);
-					for(int j = i + 1; j < particles.length; j++){
-						predictParticleCollision(particles[i], particles[j], nextTime, pq, t);
-					}
-				}
-				
-				
-				// get impending event, discard if invalidated
-				
-				Event e = pq.delMin();
-				if(!e.isValid()) continue;
-				Particle a = e.a;
-				Particle b = e.b;
-				
-				// physical collision, so update positions, and then simulation clock
-				double dt = e.time - t;
-				if(dt > 0){
-					for(Particle p : particles){
-						p.move(dt, particles, G);
-					}
-				}
-				
-				t = e.time;
-				
-				// process event
-				if(a != null && b != null){
-					a.bounceOff(b);
-				}             // particle-particle collision
-				else if(a != null){
-					a.bounceOffVerticalWall();
-				}  // particle-wall collision
-				else if(b != null){
-					b.bounceOffHorizontalWall();
-				}
-				else{
-					redraw();
-				}
-				
-				pq = new MinPQ<>();
-				
-				pq.insert(new Event(t + 1.0 / HZ, null, null));
-				// 计算崭新的加速状态
-				for(int i = 0; i < particles.length; i++){
-					particles[i].calNetForce(particles, G);
-					particles[i].calAcceleration();
-				}
-				// 插入碰撞事件
-				for(int i = 0; i < particles.length; i++){
-					predictWallCollision(particles[i], nextTime, pq, t);
-					for(int j = i + 1; j < particles.length; j++){
-						predictParticleCollision(particles[i], particles[j], nextTime, pq, t);
-					}
-				}
-			}
-			
-		}
-		
-		
-	}
-	
-	
-	/**
-	 * 事件驱动清洗pq
-	 *
-	 * @param tick
-	 */
-	public void continuousTest(double tick){
-		
-		MinPQ<Event> pq;
-		double limit;
-		
-		while(true){
-			pq = new MinPQ<>();
-			StdDraw.clear();
-			
-			for(Particle p : particles){
-				p.draw();
-			}
-			
-			StdDraw.show();
-			
-			limit = t + tick;
-			
-			for(Particle particle : particles){
-				preTick(particle, tick);
-			}
-			
-			while(t < limit){
-				
-				pq.insert(new Event(limit, null, null));
-				
-				for(Particle particle : particles){
-					preTick(particle, tick);
-				}
-				
-				// get impending event, discard if invalidated
-				Event e = pq.delMin();
-				
-				Particle a = e.a;
-				Particle b = e.b;
-				
-				// physical collision, so update positions, and then simulation clock
-				for(Particle p : particles){
-					p.moveDirectly(e.time - t);
-				}
-				
-				t = e.time;
-				
-				// process event
-				if(a != null && b != null){
-					a.bounceOff(b);
-				}
-				else if(a != null){
-					a.bounceOffVerticalWall();
-				}
-				else if(b != null){
-					b.bounceOffHorizontalWall();
-				}
-				else{
-					// 对 double 精度造成的重绘优先进行处理
-					Event nextEvent = pq.peer();
-					if(nextEvent != null){
-						if(nextEvent.time <= limit + 0.0000001){
-							a = nextEvent.a;
-							b = nextEvent.b;
-							
-							// physical collision, so update positions, and then simulation clock
-							for(Particle p : particles){
-								p.moveDirectly(e.time - t);
-							}
-							
-							// process event
-							if(a != null && b != null){
-								a.bounceOff(b);
-							}
-							else if(a != null){
-								a.bounceOffVerticalWall();
-							}
-							else if(b != null){
-								b.bounceOffHorizontalWall();
-							}
-						}
-					}
-				}
-				
-			}
-			
-			try{
-				Thread.sleep(20);
-			}
-			catch(InterruptedException e){
-				e.printStackTrace();
-			}
-		}
-		
 		
 	}
 	
@@ -343,7 +98,6 @@ public class CollisionSystem{
 			predict(particle);
 		}
 		
-		// 让宇宙给运行起来
 		// the main event-driven simulation loop
 		while(!pq.isEmpty()){
 			
@@ -354,12 +108,11 @@ public class CollisionSystem{
 			Particle b = e.b;
 			
 			// physical collision, so update positions, and then simulation clock
-			double dt = e.time - t;
-			for(Particle p : particles){
-				p.move(dt);
+			for(int i = 0; i < particles.length; i++){
+				particles[i].move(e.time - t);
 			}
 			
-			
+			double dt = e.time - t;
 			t = e.time;
 			
 			// process event
@@ -371,17 +124,26 @@ public class CollisionSystem{
 			}  // particle-wall collision
 			else if(b != null){
 				b.bounceOffHorizontalWall();
-			}
+			}// particle-wall collision
+			else{
+				redraw();
+			}               // redraw event
 			
 			while(!pq.isEmpty()){
 				pq.delMin();
 			}
 			
+			if(t < limit){
+				pq.insert(new Event(t + 1.0 / HZ, null, null));
+			}
+			
+			// update the priority queue with new collisions involving a or b
+			for(Particle particle : particles){
+				particle.calNetForce(particles, G);
+				particle.calAcceleration();
+				predict(particle);
+			}
 		}
-		
-		redraw();
-		
-		
 	}
 	
 	
@@ -419,7 +181,7 @@ public class CollisionSystem{
 		}
 		
 		// has any collision occurred between when event was created and now?
-		public boolean isValid(){
+		public boolean isValid(double t){
 			if(a != null && a.count() != countA) return false;
 			if(b != null && b.count() != countB) return false;
 			return true;
@@ -473,12 +235,8 @@ public class CollisionSystem{
 		}
 		
 		// create collision system and simulate
-		CollisionSystem system = new CollisionSystem(particles);
+		Co1 system = new Co1(particles);
 		system.simulate(1000000);
-//		system.continuousSimulation(1);
-//		system.continuousTest(1.0);
-		
-		
 	}
 	
 	

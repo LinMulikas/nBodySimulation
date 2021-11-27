@@ -30,8 +30,11 @@ import java.awt.Color;
 public class Particle{
 	private static final double INFINITY = Double.POSITIVE_INFINITY;
 	
+	private double nextEventTime;
 	private double rx, ry;        // position
+	public double rx_, ry_;
 	private double vx, vy;        // velocity
+	public double vx_, vy_;
 	private double fx, fy;
 	private double ax, ay;
 	private int count;            // number of collisions so far
@@ -80,11 +83,13 @@ public class Particle{
 		this.fx = this.calNetForce_x(particles, G);
 		this.fy = this.calNetForce_y(particles, G);
 	}
+	
 	private double calNetForce_x(Particle[] particles, double G){
 		double netF_x = 0;
 		for(Particle p : particles){
 			if(p != this){
-				if(this.distanceTo(p) >= this.radius + p.radius){
+				if(this.distanceTo(p) > (this.radius + p.radius))
+				{
 					netF_x += this.getNetForceTo(p, G) * (p.rx - this.rx) / (this.distanceTo(p));
 				}
 			}
@@ -96,8 +101,9 @@ public class Particle{
 		double netF_y = 0;
 		for(Particle p : particles){
 			if(p != this){
-				if(this.distanceTo(p) >= this.radius + p.radius){
+				if(this.distanceTo(p) > (this.radius + p.radius) ){
 					netF_y += this.getNetForceTo(p, G) * (p.ry - this.ry) / (this.distanceTo(p));
+					
 				}
 			}
 		}
@@ -106,12 +112,9 @@ public class Particle{
 	
 	public double getNetForceTo(Particle particle, double G){
 		double r = sqrtDistanceTo(particle);
-		double netForce = G * this.mass * particle.mass / (r * r);
-		return netForce;
+		return G * this.mass * particle.mass / (r * r);
 	}
 	
-	
-
 	
 	/**
 	 * Initializes a particle with a random position and velocity.
@@ -124,7 +127,7 @@ public class Particle{
 		vx = StdRandom.uniform(-0.002, 0.002);
 		vy = StdRandom.uniform(-0.002, 0.002);
 		radius = 0.02;
-			mass = 70000;
+		mass = 1000000;
 		color = Color.BLACK;
 	}
 	
@@ -134,29 +137,54 @@ public class Particle{
 	 *
 	 * @param dt the amount of time
 	 */
-	public void move(double dt, Particle[] particles, double G){
+	public void move(double dt){
+		
+		
 		this.vx += this.ax * dt;
 		this.vy += this.ay * dt;
 		
 		rx += vx * dt + 0.5 * this.ax * dt * dt;
 		ry += vy * dt + 0.5 * this.ay * dt * dt;
 		
+	}
+	
+	public void move(double dt, Particle[] particles, double g){
+		this.vx += this.ax * dt;
+		this.vy += this.ay * dt;
 		
-		this.calNetForce(particles, G);
+		rx += vx * dt;
+		ry += vy * dt;
+		
+		this.calNetForce(particles, g);
 		this.calAcceleration();
 	}
 	
-	public void move(double dt){
+	private class nextAction{
+		double totalTime;
+		double dt;
+		boolean collision = false;
+		
+	}
+	
+	public void tryMoveDirectly(double dt, double time){
+		this.vx_ = this.vx + this.ax * dt;
+		this.vy_ = this.vy + this.ay * dt;
+		
+		rx_ += vx * dt + 0.5 * this.ax * dt * dt;
+		ry_ += vy * dt + 0.5 * this.ay * dt * dt;
+		
+		this.nextEventTime = time;
+	}
+	
+	public void moveDirectly(double dt){
+		if(dt < 0){
+			return;
+		}
 		this.vx += this.ax * dt;
 		this.vy += this.ay * dt;
-
+		
 		rx += vx * dt + 0.5 * this.ax * dt * dt;
 		ry += vy * dt + 0.5 * this.ay * dt * dt;
-		
-		
-		
-//		rx += vx * dt;
-//		ry += vy * dt;
 	}
 	
 	public void calAcceleration(){
