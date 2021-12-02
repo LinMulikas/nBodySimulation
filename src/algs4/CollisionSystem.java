@@ -35,7 +35,7 @@ import java.awt.Color;
  * @author Kevin Wayne
  */
 public class CollisionSystem{
-	private static final double HZ = 5;    // number of redraw events per clock tick
+	private static final double HZ = 10;    // number of redraw events per clock tick
 	public final double G = 6.67e-11;
 	private MinPQ<Event> pq;          // the priority queue
 	private double t = 0.0;           // simulation clock time
@@ -91,7 +91,8 @@ public class CollisionSystem{
 		if(a == null) return;
 		
 		double dt = a.timeToHit(b);
-		if(dt >= 0 && (t + dt <= nextTime + 0.0000000001)) pq.insert(new Event(t + dt, a, b));
+		// dt >= 0是不是可以删掉
+		if(t + dt <= nextTime + 0.0000000001) pq.insert(new Event(t + dt, a, b));
 	}
 	
 	private void predictWallCollision(Particle a, double nextTime, MinPQ<Event> pq, double t){
@@ -100,11 +101,11 @@ public class CollisionSystem{
 		// particle-wall collisions
 		double dtX = a.timeToHitVerticalWall();
 		double dtY = a.timeToHitHorizontalWall();
-		if(dtX >= 0 && (t + dtX <= nextTime + 0.0000000001)){
+		if(t + dtX <= nextTime + 0.0000000001){
 			pq.insert(new Event(t + dtX, a, null));
 			
 		}
-		if(dtY >= 0 && (t + dtY <= nextTime + 0.00000001)){
+		if(t + dtY <= nextTime + 0.00000001){
 			pq.insert(new Event(t + dtY, null, a));
 			
 		}
@@ -119,14 +120,14 @@ public class CollisionSystem{
 		// particle-particle collisions
 		for(int i = 0; i < particles.length; i++){
 			double dt = a.timeToHit(particles[i]);
-			if(dt >= 0 && (t + dt <= limit + 0.000000001)) pq.insert(new Event(t + dt, a, particles[i]));
+			if(t + dt <= limit + 0.000000001) pq.insert(new Event(t + dt, a, particles[i]));
 		}
 		
 		// particle-wall collisions
 		double dtX = a.timeToHitVerticalWall();
 		double dtY = a.timeToHitHorizontalWall();
-		if(dtX >= 0 && (t + dtX <= limit + 0.0000001)) pq.insert(new Event(t + dtX, a, null));
-		if(dtY >= 0 && (t + dtY <= limit + 0.0000001)) pq.insert(new Event(t + dtY, null, a));
+		if(t + dtX <= limit + 0.0000001) pq.insert(new Event(t + dtX, a, null));
+		if(t + dtY <= limit + 0.0000001) pq.insert(new Event(t + dtY, null, a));
 	}
 	
 	
@@ -138,7 +139,6 @@ public class CollisionSystem{
 		}
 		StdDraw.show();
 		StdDraw.pause(20);
-		pq.insert(new Event(t + 1.0 / HZ, null, null));
 		
 	}
 	
@@ -155,12 +155,20 @@ public class CollisionSystem{
 		pq.insert(new Event(0, null, null));
 		
 		while(true){
-			nextTime = t + tick;
+			nextTime = t + tick / HZ;
 			// 似乎会造成浮点数误差而出现的重绘错误的优先于了碰撞事件
+			
+			// 计算一个tick内的全部运行状态
 			while(t < nextTime){
 				
-				pq.insert(new Event(t + tick / HZ, null, null));
+				// 插入一个tick后的保底
+				pq.insert(new Event(nextTime, null, null));
 				
+				// 插入第一次预测的结果
+				
+				/**
+				 * 预测
+				 */
 				// 计算崭新的加速状态
 				for(int i = 0; i < particles.length; i++){
 					particles[i].calNetForce(particles, G);
@@ -174,53 +182,66 @@ public class CollisionSystem{
 					}
 				}
 				
-				
+				/**
+				 * 响应第一次预测，推进到该事件
+				 */
 				// get impending event, discard if invalidated
-				
-				Event e = pq.delMin();
-				if(!e.isValid()) continue;
-				Particle a = e.a;
-				Particle b = e.b;
-				
-				// physical collision, so update positions, and then simulation clock
-				double dt = e.time - t;
-				if(dt > 0){
-					for(Particle p : particles){
-						p.move(dt, particles, G);
+				while(true){
+					Event e = pq.delMin();
+					if(!e.isValid()) continue;
+					Particle a = e.a;
+					Particle b = e.b;
+					
+					/**
+					 * 推进时间到事件发生
+					 */
+					// physical collision, so update positions, and then simulation clock
+					double dt = e.time - t;
+					if(dt > 0){
+						for(Particle p : particles){
+							p.move(dt, particles, G);
+							
+						}
+					}
+					
+					t = e.time;
+					/**
+					 * 处理事件
+					 */
+					// process event
+					if(a != null && b != null){
+						a.bounceOff(b);
+					}             // particle-particle collision
+					else if(a != null){
+						a.bounceOffVerticalWall();
+					}  // particle-wall collision
+					else if(b != null){
+						b.bounceOffHorizontalWall();
+					}
+					else{
+						// 重绘事件说明到达了时间的终点
+						Event testNext = pq.isEmpty() ? null : pq.peer();
+						if(testNext == null){
+							break;
+						}
+						if(testNext.isValid() && (testNext.time - nextTime <= 0.0000000001)){
+						}
+						else{
+							break;
+						}
+						
 					}
 				}
 				
-				t = e.time;
-				
-				// process event
-				if(a != null && b != null){
-					a.bounceOff(b);
-				}             // particle-particle collision
-				else if(a != null){
-					a.bounceOffVerticalWall();
-				}  // particle-wall collision
-				else if(b != null){
-					b.bounceOffHorizontalWall();
-				}
-				else{
-					redraw();
+				// 处理最后的重绘事件
+				StdDraw.clear();
+				for(int i = 0; i < particles.length; i++){
+					particles[i].draw();
 				}
 				
+				StdDraw.show();
+				StdDraw.pause(1);
 				pq = new MinPQ<>();
-				
-				pq.insert(new Event(t + 1.0 / HZ, null, null));
-				// 计算崭新的加速状态
-				for(int i = 0; i < particles.length; i++){
-					particles[i].calNetForce(particles, G);
-					particles[i].calAcceleration();
-				}
-				// 插入碰撞事件
-				for(int i = 0; i < particles.length; i++){
-					predictWallCollision(particles[i], nextTime, pq, t);
-					for(int j = i + 1; j < particles.length; j++){
-						predictParticleCollision(particles[i], particles[j], nextTime, pq, t);
-					}
-				}
 			}
 			
 		}
@@ -474,8 +495,8 @@ public class CollisionSystem{
 		
 		// create collision system and simulate
 		CollisionSystem system = new CollisionSystem(particles);
-		system.simulate(1000000);
-//		system.continuousSimulation(1);
+//		system.simulate(1000000);
+		system.continuousSimulation(1);
 //		system.continuousTest(1.0);
 		
 		
