@@ -30,11 +30,8 @@ import java.awt.Color;
 public class Particle{
 	private static final double INFINITY = Double.POSITIVE_INFINITY;
 	
-	private double nextEventTime;
 	private double rx, ry;        // position
-	public double rx_, ry_;
 	private double vx, vy;        // velocity
-	public double vx_, vy_;
 	private double fx, fy;
 	private double ax, ay;
 	private int count;            // number of collisions so far
@@ -42,6 +39,13 @@ public class Particle{
 	private final double mass;    // mass
 	private final Color color;    // color
 	
+	public String toString(double width){
+		return width * this.rx + " " + width * this.ry + " " + width * this.vx + " " + width * this.vy + "\n";
+	}
+	
+	public String toString(){
+		return this.rx + " " + this.ry + " " + this.vx + " " + this.vy + "\n";
+	}
 	
 	/**
 	 * Initializes a particle with the specified position, velocity, radius, mass, and color.
@@ -88,8 +92,7 @@ public class Particle{
 		double netF_x = 0;
 		for(Particle p : particles){
 			if(p != this){
-				if(this.distanceTo(p) > (this.radius + p.radius))
-				{
+				if(this.distanceTo(p) > (this.radius + p.radius)){
 					netF_x += this.getNetForceTo(p, G) * (p.rx - this.rx) / (this.distanceTo(p));
 				}
 			}
@@ -101,7 +104,7 @@ public class Particle{
 		double netF_y = 0;
 		for(Particle p : particles){
 			if(p != this){
-				if(this.distanceTo(p) > (this.radius + p.radius) ){
+				if(this.distanceTo(p) > (this.radius + p.radius)){
 					netF_y += this.getNetForceTo(p, G) * (p.ry - this.ry) / (this.distanceTo(p));
 					
 				}
@@ -121,11 +124,11 @@ public class Particle{
 	 * The position is uniform in the unit box; the velocity in
 	 * either direciton is chosen uniformly at random.
 	 */
-	public Particle(){
-		rx = StdRandom.uniform(0.0, 1.0);
-		ry = StdRandom.uniform(0.0, 1.0);
-		vx = StdRandom.uniform(-0.002, 0.002);
-		vy = StdRandom.uniform(-0.002, 0.002);
+	public Particle(double width){
+		rx = StdRandom.uniform(0.0, width);
+		ry = StdRandom.uniform(0.0, width);
+		vx = StdRandom.uniform(-0.002, 0.02);
+		vy = StdRandom.uniform(-0.002, 0.02);
 		radius = 0.02;
 		mass = 1000000;
 		color = Color.BLACK;
@@ -143,8 +146,8 @@ public class Particle{
 		this.vx += this.ax * dt;
 		this.vy += this.ay * dt;
 		
-		rx += vx * dt + 0.5 * this.ax * dt * dt;
-		ry += vy * dt + 0.5 * this.ay * dt * dt;
+		rx += vx * dt;
+		ry += vy * dt;
 		
 	}
 	
@@ -166,14 +169,20 @@ public class Particle{
 		
 	}
 	
-	public void tryMoveDirectly(double dt, double time){
-		this.vx_ = this.vx + this.ax * dt;
-		this.vy_ = this.vy + this.ay * dt;
-		
-		rx_ += vx * dt + 0.5 * this.ax * dt * dt;
-		ry_ += vy * dt + 0.5 * this.ay * dt * dt;
-		
-		this.nextEventTime = time;
+	public double getRx(){
+		return this.rx;
+	}
+	
+	public double getRy(){
+		return this.ry;
+	}
+	
+	public double getVx(){
+		return this.vx;
+	}
+	
+	public double getVy(){
+		return this.vy;
 	}
 	
 	public void moveDirectly(double dt){
@@ -199,6 +208,7 @@ public class Particle{
 		StdDraw.setPenColor(color);
 		StdDraw.filledCircle(rx, ry, radius);
 	}
+	
 	
 	/**
 	 * Returns the number of collisions involving this particle with
@@ -250,8 +260,8 @@ public class Particle{
 	 * {@code Double.POSITIVE_INFINITY} if the particle will not collide
 	 * with a vertical wall
 	 */
-	public double timeToHitVerticalWall(){
-		if(vx > 0) return (1.0 - rx - radius) / vx;
+	public double timeToHitVerticalWall(double width){
+		if(vx > 0) return (width - rx - radius) / vx;
 		else if(vx < 0) return (radius - rx) / vx;
 		else return INFINITY;
 	}
@@ -265,8 +275,8 @@ public class Particle{
 	 * {@code Double.POSITIVE_INFINITY} if the particle will not collide
 	 * with a horizontal wall
 	 */
-	public double timeToHitHorizontalWall(){
-		if(vy > 0) return (1.0 - ry - radius) / vy;
+	public double timeToHitHorizontalWall(double width){
+		if(vy > 0) return (width - ry - radius) / vy;
 		else if(vy < 0) return (radius - ry) / vy;
 		else return INFINITY;
 	}

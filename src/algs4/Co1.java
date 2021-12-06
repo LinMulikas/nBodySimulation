@@ -16,7 +16,6 @@ package algs4; /****************************************************************
  *
  ******************************************************************************/
 
-import edu.princeton.cs.algs4.Queue;
 import edu.princeton.cs.algs4.StdDraw;
 import edu.princeton.cs.algs4.StdIn;
 
@@ -35,22 +34,36 @@ import java.awt.Color;
  * @author Kevin Wayne
  */
 public class Co1{
-	private static final double HZ = 0.5;    // number of redraw events per clock tick
+	private double width;
+	private double[] checkTimeList;
+	private int[] checkParticlesList;
+	private static final double HZ = 20;    // number of redraw events per clock tick
 	public final double G = 6.67e-11;
 	private MinPQ<Event> pq;          // the priority queue
 	private double t = 0.0;           // simulation clock time
 	private Particle[] particles;     // the array of particles
-	private Queue<Event> queue;
 	
-	/**
-	 * Initializes a system with the specified collection of particles.
-	 * The individual particles will be mutated during the simulation.
-	 *
-	 * @param particles the array of particles
-	 */
+	public int numToCheck;
+	public double[][] ans;
+	public double[][] myAns;
+	public double[][] errors;
+	
+	public Co1(){
+	
+	}
+	
 	public Co1(Particle[] particles){
 		this.particles = particles.clone();   // defensive copy
 	}
+	
+	public void setParticles(Particle[] particles){
+		this.particles = particles;
+	}
+	
+	public void setWidth(double width){
+		this.width = width;
+	}
+	
 	
 	// updates priority queue with all new events for particle a
 	private void predict(Particle a){
@@ -63,8 +76,8 @@ public class Co1{
 		}
 		
 		// particle-wall collisions
-		double dtX = a.timeToHitVerticalWall();
-		double dtY = a.timeToHitHorizontalWall();
+		double dtX = a.timeToHitVerticalWall(width);
+		double dtY = a.timeToHitHorizontalWall(width);
 		if(dtX <= 1.0 / HZ) pq.insert(new Event(t + dtX, a, null));
 		if(dtY <= 1.0 / HZ) pq.insert(new Event(t + dtY, null, a));
 	}
@@ -77,7 +90,7 @@ public class Co1{
 			particles[i].draw();
 		}
 		StdDraw.show();
-		StdDraw.pause(20);
+		StdDraw.pause(10);
 		
 	}
 	
@@ -92,11 +105,17 @@ public class Co1{
 		// initialize PQ with collision events and redraw event
 		pq = new MinPQ<Event>();
 		
+		int index = 0;
+		double checkTime = this.checkTimeList[index];
+		
+		errors = new double[numToCheck][4];
+		
 		pq.insert(new Event(0, null, null));        // redraw event
 		
 		for(Particle particle : particles){
 			predict(particle);
 		}
+		
 		
 		// the main event-driven simulation loop
 		while(!pq.isEmpty()){
@@ -108,11 +127,31 @@ public class Co1{
 			Particle b = e.b;
 			
 			// physical collision, so update positions, and then simulation clock
-			for(int i = 0; i < particles.length; i++){
-				particles[i].move(e.time - t);
+			if(e.time > checkTime && numToCheck > index){
+				
+				
+				for(int i = 0; i < particles.length; i++){
+					particles[i].move(checkTime - t);
+				}
+				
+				this.recordAns(index, myAns, particles, checkParticlesList[index]);
+				this.calErrors(index);
+				
+				index++;
+				if(index < numToCheck){
+					checkTime = checkTimeList[index];
+				}
+			}
+			else{
+				if(index >= numToCheck){
+					printArray(errors);
+					System.out.println();
+				}
+				for(int i = 0; i < particles.length; i++){
+					particles[i].move(e.time - t);
+				}
 			}
 			
-			double dt = e.time - t;
 			t = e.time;
 			
 			// process event
@@ -133,9 +172,12 @@ public class Co1{
 				pq.delMin();
 			}
 			
-			if(t < limit){
-				pq.insert(new Event(t + 1.0 / HZ, null, null));
-			}
+			
+			pq.insert(new Event(t + 1.0 / HZ, null, null));
+			
+			// 被注释掉的部分是保持1tick为最小时间，但会造成视觉上碰撞时候的"帧数"上升
+//			pq.insert(new Event(t_0 + 1.0 / HZ, null, null));
+//			t_0 += 1.0 / HZ;
 			
 			// update the priority queue with new collisions involving a or b
 			for(Particle particle : particles){
@@ -144,6 +186,52 @@ public class Co1{
 				predict(particle);
 			}
 		}
+	}
+	
+	public void printParticles(double width){
+		for(Particle p : particles){
+			System.out.print(p.toString(width));
+		}
+	}
+	
+	public void calErrors(int index){
+		for(int i = 0; i < 4; i++){
+			errors[index][i] = 100 * Math.abs(myAns[index][i] - ans[index][i]) / ans[index][i];
+		}
+	}
+	
+	public void printArray(double[][] array){
+		for(int i = 0; i < numToCheck; i++){
+			for(int j = 0; j < 4; j++){
+				System.out.printf("%f ", array[i][j]);
+			}
+			System.out.println();
+		}
+	}
+	
+	public void recordAns(int index, double[][] myAns, Particle[] particles, int id){
+		
+		myAns[index][0] = particles[id].getRx();
+		myAns[index][1] = particles[id].getRy();
+		myAns[index][2] = particles[id].getVx();
+		myAns[index][3] = particles[id].getVy();
+		
+	}
+	
+	public double[] getCheckTimeList(){
+		return checkTimeList;
+	}
+	
+	public void setCheckTimeList(double[] checkTimeList){
+		this.checkTimeList = checkTimeList;
+	}
+	
+	public int[] getCheckParticlesList(){
+		return checkParticlesList;
+	}
+	
+	public void setCheckParticlesList(int[] checkParticlesList){
+		this.checkParticlesList = checkParticlesList;
 	}
 	
 	
@@ -199,8 +287,11 @@ public class Co1{
 	 * @param args the command-line arguments
 	 */
 	public static void main(String[] args){
+		Co1 system = new Co1();
 		
 		StdDraw.setCanvasSize(600, 600);
+		
+		
 		
 		// enable double buffering
 		StdDraw.enableDoubleBuffering();
@@ -213,11 +304,14 @@ public class Co1{
 			int n = Integer.parseInt(args[0]);
 			particles = new Particle[n];
 			for(int i = 0; i < n; i++)
-				particles[i] = new Particle();
+				particles[i] = new Particle(1);
 		}
 		// or read from standard input
 		else{
+			int width = StdIn.readInt();
+			system.setWidth(width);
 			int n = StdIn.readInt();
+			
 			particles = new Particle[n];
 			for(int i = 0; i < n; i++){
 				double rx = StdIn.readDouble();
@@ -234,8 +328,33 @@ public class Co1{
 			}
 		}
 		
+		int numCheck = StdIn.readInt();
+		system.numToCheck = numCheck;
+		
+		double[] checkList = new double[numCheck];
+		int[] ids = new int[numCheck];
+		double[][] ans = new double[numCheck][4];
+		double[][] myAns = new double[numCheck][4];
+		
+		for(int i = 0; i < numCheck; i++){
+			checkList[i] = StdIn.readDouble();
+			ids[i] = StdIn.readInt();
+		}
+		
+		for(int i = 0; i < numCheck; i++){
+			for(int j = 0; j < 4; j++){
+				ans[i][j] = StdIn.readDouble();
+				myAns[i][j] = 0;
+			}
+		}
 		// create collision system and simulate
-		Co1 system = new Co1(particles);
+		
+		system.setCheckTimeList(checkList);
+		system.setCheckParticlesList(ids);
+		system.setParticles(particles);
+		StdDraw.setScale(0, system.width);
+		system.ans = ans;
+		system.myAns = myAns;
 		system.simulate(1000000);
 	}
 	
