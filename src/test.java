@@ -1,5 +1,3 @@
-package algs4;
-
 import java.awt.*;
 
 public class test{

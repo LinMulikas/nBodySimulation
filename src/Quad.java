@@ -1,5 +1,3 @@
-package algs4;//A quadrant object that can self-subdivide. Important for creating a Barnes-Hut tree, since it holds quadrants.
-
 public class Quad{
 
     private double xmid, ymid, length;

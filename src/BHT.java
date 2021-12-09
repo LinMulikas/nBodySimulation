@@ -1,11 +1,6 @@
-package algs4;
-
-import nBody.Body;
-
 //改写BHTree
 public class BHT{
     private Particle particle;
-    private Body body;     // body or aggregate body stored in this node
     private Quad quad;     // square region that the tree represents
     private BHT NW;     // tree representing northwest quadrant
     private BHT NE;     // tree representing northeast quadrant
@@ -129,9 +124,5 @@ public class BHT{
         }
     }
 
-    // convert to string representation for output
-    public String toString(){
-        if(NE != null || NW != null || SW != null || SE != null) return "*" + body + "\n" + NW + NE + SW + SE;
-        else return " " + body + "\n";
-    }
+
 }

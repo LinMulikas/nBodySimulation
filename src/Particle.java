@@ -1,12 +1,7 @@
-package algs4;
-
-import edu.princeton.cs.algs4.StdDraw;
-import edu.princeton.cs.algs4.StdRandom;
-
 import java.awt.Color;
 
 /**
- * The {@code algs4.Particle} class represents a particle moving in the unit box,
+ * The {@code Particle} class represents a particle moving in the unit box,
  * with a given position, velocity, radius, and mass. Methods are provided
  * for moving the particle and for predicting and resolvling elastic
  * collisions with vertical walls, horizontal walls, and other particles.
@@ -83,7 +78,7 @@ public class Particle{
 
     public void addForceTo(Particle particle, double G){
         double r = distanceTo(particle);
-        if(this.distanceTo(particle) >= (this.radius + particle.radius)){
+        if(this.distanceTo(particle) > (this.radius + particle.radius)){
             double netForce = G * this.mass * particle.mass / (r * r);
             this.fx += netForce * (particle.rx - this.rx) / (r);
             this.fy += netForce * (particle.ry - this.ry) / (r);
@@ -118,12 +113,8 @@ public class Particle{
      * @param dt the amount of time
      */
     public void move(double dt){
-        this.vx += this.ax * dt;
-        this.vy += this.ay * dt;
-
         rx += vx * dt;
         ry += vy * dt;
-
     }
 
     public double getRx(){
@@ -144,9 +135,12 @@ public class Particle{
 
 
 
-    public void calAcceleration(){
+    public void changeVelocity(double tick){
         this.ax = this.fx / mass;
         this.ay = this.fy / mass;
+
+        this.vx += this.ax * tick;
+        this.vy += this.ay * tick;
     }
 
     /**
@@ -182,11 +176,6 @@ public class Particle{
      * {@code Double.POSITIVE_INFINITY} if the particles will not collide
      */
     public double timeToHit(Particle that){
-
-        double d_0 = Math.abs(this.distanceTo(that) - (this.radius + that.radius));
-        if(d_0 <= 1e-6){
-            return 0;
-        }
 
         if(this == that) return INFINITY;
         double dx = that.rx - this.rx;
