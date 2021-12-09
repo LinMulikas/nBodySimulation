@@ -9,8 +9,8 @@ public class CollisionSystem{
     private Quad q;
     private double[] checkTimeList;
     private int[] checkParticlesList;
-    private static final double HZ = 10;    // number of redraw events per clock tick
-    public final double G = 6.67e-11;
+    private static final double HZ = 2;    // number of redraw events per clock tick
+    public final double G = 6.67259e-11;
     private MinPQ pq;          // the priority queue
     private double t = 0.0;           // simulation clock time
     private Particle[] particles;     // the array of particles
@@ -19,6 +19,8 @@ public class CollisionSystem{
     public double[][] ans;
     public double[][] myAns;
     public double[][] errors;
+
+    private boolean guiContinue = false;
 
     private int printCount = 0;
 
@@ -70,7 +72,6 @@ public class CollisionSystem{
             particles[i].draw();
         }
         StdDraw.show();
-        StdDraw.pause(10);
 
     }
 
@@ -132,7 +133,7 @@ public class CollisionSystem{
                             printArray(myAns);
                             System.out.println();
                             long end = System.currentTimeMillis();
-                            System.out.println("用时：" + (end - start)/1000.0 + "秒");
+                            System.out.println("模拟用时：" + (end - start) / 1000.0 + " 秒");
                             System.out.println();
                             if(hasAnswerList){
                                 printArray(errors);
@@ -142,8 +143,19 @@ public class CollisionSystem{
                                 printCount++;
                             }
                             else{
+                                System.out.println("答案已输出");
                                 Scanner in = new Scanner(System.in);
                                 int a = in.nextInt();
+                            }
+                        }
+                        else{
+                            if(!guiContinue){
+                                System.out.println("是否继续运行？（y/n）");
+                                Scanner in = new Scanner(System.in);
+                                String contin = in.next();
+                                if(contin.equals("y") || contin.equals("Y")){
+                                    guiContinue = true;
+                                }
                             }
                         }
                     }
@@ -301,6 +313,12 @@ public class CollisionSystem{
         if(fileRead.equals("y") || fileRead.equals("Y")){
             Particle[] particles = null;
 
+            System.out.println("文件是否包括答案？（y/n）");
+            String hasAns = in.next();
+            if(hasAns.equals("y") || hasAns.equals("Y")){
+                hasAnswerList = true;
+            }
+
             System.out.println("请输入文件路径(含名字)：");
             String filePath = in.next();
             InputStreamReader fileReader = null;
@@ -342,7 +360,7 @@ public class CollisionSystem{
 
                 particles = new Particle[number];
                 for(int i = 0; i < number; i++){
-                    String[] line = br.readLine().split("\t");
+                    String[] line = br.readLine().split("\\s");
                     double rx = Double.parseDouble(line[0]);
                     double ry = Double.parseDouble(line[1]);
                     double vx = Double.parseDouble(line[2]);
@@ -366,13 +384,26 @@ public class CollisionSystem{
 
 
                 for(int i = 0; i < numCheck; i++){
-                    String[] line = br.readLine().split("\t");
+                    String[] line = br.readLine().split("\\s");
                     checkList[i] = Double.parseDouble(line[0]);
                     ids[i] = Integer.parseInt(line[1]);
                 }
 
                 system.setCheckTimeList(checkList);
                 system.setCheckParticlesList(ids);
+
+                if(hasAnswerList){
+                    double[][] ans = new double[numCheck][4];
+                    for(int i = 0; i < numCheck; i++){
+                        String[] line = br.readLine().split("\\s");
+
+                        for(int j = 0; j < 4; j++){
+                            ans[i][j] = Double.parseDouble(line[j]);
+                        }
+                    }
+                    system.ans = ans;
+                }
+
 
                 double[][] myAns = new double[numCheck][4];
                 for(int i = 0; i < numCheck; i++){
@@ -394,7 +425,6 @@ public class CollisionSystem{
             }
 
 
-
             system.simulate(hasCheckList, hasAnswerList, GUI);
 
         }
@@ -410,11 +440,6 @@ public class CollisionSystem{
                 GUI = false;
             }
 
-            if(GUI){
-                StdDraw.setCanvasSize(600, 600);
-                // enable double buffering
-                StdDraw.enableDoubleBuffering();
-            }
 
             // create n random particles
             if(args.length == 1){
@@ -485,6 +510,9 @@ public class CollisionSystem{
 
             system.setParticles(particles);
             if(GUI){
+                StdDraw.setCanvasSize(600, 600);
+                // enable double buffering
+                StdDraw.enableDoubleBuffering();
                 StdDraw.setScale(0, system.width);
             }
             system.simulate(hasCheckList, hasAnswerList, GUI);
