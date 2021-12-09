@@ -102,8 +102,6 @@ public class Co1{
     }
 
 
-
-
     public void simulate(boolean checkAns){
 
         // initialize PQ with collision events and redraw event

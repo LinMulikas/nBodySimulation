@@ -1,5 +1,7 @@
 package nBody;//A quadrant object that can self-subdivide. Important for creating a Barnes-Hut tree, since it holds quadrants.
 
+import static algs4.Quad.testContain;
+
 public class Quad {
   
   private double xmid, ymid, length;
@@ -17,12 +19,7 @@ public class Quad {
   
   //Check if the current quadrant contains a point
   public boolean contains(double xmid, double ymid) {
-    if (xmid<=this.xmid+this.length/2.0 && xmid>=this.xmid-this.length/2.0 && ymid<=this.ymid+this.length/2.0 && ymid>=this.ymid-this.length/2.0) {
-      return true;
-    }
-    else {
-      return false;
-    }
+      return testContain(xmid, ymid, this.xmid, this.length, this.ymid);
   }
   //Create subdivisions of the current quadrant
   

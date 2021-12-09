@@ -102,7 +102,6 @@ public class MinPQ<Key> implements Iterable<Key> {
      * @param  keys the array of keys
      */
     public MinPQ(Key[] keys) {
-        n = keys.length;
         pq = (Key[]) new Object[keys.length + 1];
         for (int i = 0; i < n; i++)
             pq[i+1] = keys[i];
