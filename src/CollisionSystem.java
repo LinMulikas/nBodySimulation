@@ -250,18 +250,18 @@ public class CollisionSystem{
             /**
              * 新的预测
              */
-//            for(Particle particle : particles){
-//                predictByTree(particle);
-//            }
+            for(Particle particle : particles){
+                predictByTree(particle);
+            }
 
 //            for(Particle particle : particles){
 //                particle.parallelPredict(particle, tree, pq, width, HZ, t);
 //            }
 
-            List<Particle> list = Arrays.asList(particles);
+//            List<Particle> list = Arrays.asList(particles);
 //            Collections.synchronizedList(list).parallelStream().forEach(this::predictByTree);
-
-            list.parallelStream().forEach(this::predictByTree);
+//
+//            list.parallelStream().forEach(this::predictByTree);
         }
 
     }
