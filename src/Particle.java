@@ -26,6 +26,7 @@ public class Particle{
     private double vx, vy;        // velocity
     private double fx, fy;
     private double ax, ay;
+    public double t = 0;
     private int count;            // number of collisions so far
     private final double radius;  // radius
     private final double mass;    // mass
@@ -57,6 +58,7 @@ public class Particle{
     public void calNeighbors(BHT tree){
         this.neighbors = tree.getNeighbor(tree.find(this));
     }
+
 
     /**
      * Initializes a particle with the specified position, velocity, radius, mass, and color.
@@ -128,6 +130,22 @@ public class Particle{
         ry += vy * dt;
     }
 
+    public void moveTo(double time){
+        rx += vx * (time - this.t);
+        ry += vy * (time - this.t);
+        this.t = time;
+    }
+
+    public void back(double dt){
+        rx -= vx * dt;
+        ry -= vy * dt;
+    }
+
+    public void backTo(double time){
+        rx -= vx * (this.t - time);
+        ry -= vy * (this.t - time);
+    }
+
     public double getRx(){
         return this.rx;
     }
@@ -171,13 +189,23 @@ public class Particle{
                 });
     }
 
+    public synchronized void predictByNeighbor(Particle a, PriorityBlockingQueue<Event> pq, double HZ, double t){
+        Collections.synchronizedList(a.neighbors)
+                .stream()
+                .parallel()
+                .forEach(
+                        particle -> {
+                            particle.action(a, pq, HZ, t);
+                        }
+                );
+    }
+
     public void predictWalls(PriorityBlockingQueue<Event> pq, double width, double HZ, double t){
         double dtX = this.timeToHitVerticalWall(width);
         double dtY = this.timeToHitHorizontalWall(width);
         if(dtX >= 0 && dtX <= 1.0 / HZ) pq.add(new Event(t + dtX, this, null));
         if(dtY >= 0 && dtY <= 1.0 / HZ) pq.add(new Event(t + dtY, null, this));
     }
-
 
 
     public void action(Particle b, PriorityBlockingQueue<Event> pq, double HZ, double t){
@@ -311,7 +339,6 @@ public class Particle{
         vy = -vy;
         count++;
     }
-
 
 
     public double kineticEnergy(){

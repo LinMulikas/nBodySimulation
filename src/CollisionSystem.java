@@ -10,7 +10,7 @@ public class CollisionSystem{
     private Quad q;
     private double[] checkTimeList;
     private int[] checkParticlesList;
-    private static final double HZ = 5;    // number of redraw events per clock tick
+    private static final double HZ = 100;    // number of redraw events per clock tick
     public final double G = 6.67259e-11;
     private PriorityBlockingQueue<Event> pq;          // the priority queue
     private double t = 0.0;           // simulation clock time
@@ -124,6 +124,7 @@ public class CollisionSystem{
         }
 
         pq.add(new Event(0, null, null));        // redraw event
+        double t_0 = t;
 
         //初始化的建树
         tree = new BHT(q);
@@ -138,6 +139,121 @@ public class CollisionSystem{
         for(Particle particle : particles){
             predict(particle);
         }
+
+//        while(true){
+//            /**
+//             * 对所有预测进行操作
+//             * 但是是操作完再进行新的预测，所以会出现错误时间的问题
+//             */
+//            while(!pq.isEmpty()){
+//                Event event = pq.remove();
+//                if(event.isValid()){
+//                    Particle a = event.a;
+//                    Particle b = event.b;
+//                    /**
+//                     * 全体粒子的移动
+//                     */
+//                    for(int i = 0; i < particles.length; i++){
+//                        particles[i].move(event.time - t);
+//                    }
+//
+//                    if(GUI){
+//                        redraw();
+//                    }
+//
+//                    t = event.time;
+//
+//                    /**
+//                     * 检查点的检测
+//                     */
+//                    if(hasCheckList){
+//                        if(t > checkTime && numToCheck > index){
+//
+//                            this.recordAns(index, myAns, particles, checkParticlesList[index]);
+//
+//                            if(hasAnswerList){
+//                                this.calErrors(index);
+//                            }
+//
+//                            index++;
+//                            if(index < numToCheck){
+//                                checkTime = checkTimeList[index];
+//                            }
+//                        }
+//                        else{
+//                            if(index >= numToCheck){
+//                                if(printCount == 0){
+//                                    printArray(myAns);
+//                                    System.out.println();
+//                                    long end = System.currentTimeMillis();
+//                                    System.out.println("模拟用时：" + (end - start) / 1000.0 + " 秒");
+//                                    System.out.println();
+//                                    if(hasAnswerList){
+//                                        printArray(errors);
+//                                        System.out.println();
+//                                    }
+//                                    if(GUI){
+//                                        printCount++;
+//                                    }
+//                                    else{
+//                                        System.out.println("答案已输出");
+//                                        Scanner in = new Scanner(System.in);
+//                                        int mulikas = in.nextInt();
+//                                    }
+//                                }
+//                                else{
+//                                    if(!this.guiContinue){
+//                                        System.out.println("是否继续运行？（y/n）");
+//                                        Scanner in = new Scanner(System.in);
+//                                        String contin = in.next();
+//                                        if(contin.equals("y") || contin.equals("Y")){
+//                                            this.guiContinue = true;
+//                                        }
+//                                    }
+//                                }
+//                            }
+//                        }
+//                    }
+//
+//                    /**
+//                     * Event Handle
+//                     */
+//
+//                    if(a != null && b != null){
+//                        a.bounceOff(b);
+//
+//                    }             // particle-particle collision
+//                    else if(a != null){
+//                        a.bounceOffVerticalWall();
+//                    }  // particle-wall collision
+//                    else if(b != null){
+//                        b.bounceOffHorizontalWall();
+//                    }// particle-wall collision
+//                    else{
+//                        pq.add(new Event(t + 1.0 / HZ, null, null));
+//                    }
+//                    /**
+//                     * 预测
+//                     */
+//                    tree = new BHT(q);
+//
+//                    for(Particle p : particles){
+//                        tree.insert(p);
+//                        p.predictWalls(pq, width, HZ, t);
+//                    }
+//
+//                    Arrays.stream(particles).parallel().forEach(particle -> {
+//                        particle.calNeighbors(tree);
+//                        particle.neighbors.forEach(x -> {
+//                            x.action(particle, pq, HZ, t);
+//                        });
+//                    });
+//                }
+//                else{
+//
+//                }
+//            }
+//        }
 
 
         while(!pq.isEmpty()){
@@ -257,6 +373,13 @@ public class CollisionSystem{
                 p.predictWalls(pq, width, HZ, t);
             }
 
+            Arrays.stream(particles).parallel().forEach(particle -> {
+                particle.calNeighbors(tree);
+                particle.neighbors.forEach(x -> {
+                    x.action(particle, pq, HZ, t);
+                });
+            });
+
 //            Arrays.stream(particles).parallel().forEach(particle -> {
 //                tree.insert(particle);
 //                particle.predictWalls(pq, width, HZ, t);
@@ -267,12 +390,7 @@ public class CollisionSystem{
 //            }
 
 
-            Arrays.stream(particles).parallel().forEach(particle -> {
-                particle.calNeighbors(tree);
-                particle.neighbors.forEach(x -> {
-                    x.action(particle, pq, HZ, t);
-                });
-            });
+
 
 //            System.out.println();
         }
@@ -396,7 +514,7 @@ public class CollisionSystem{
                 }
 
                 if(GUI){
-                    StdDraw.setCanvasSize(600, 600);
+                    StdDraw.setCanvasSize(800, 800);
 
                     // enable double buffering
                     StdDraw.enableDoubleBuffering();
