@@ -1,4 +1,9 @@
 import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.PriorityBlockingQueue;
 
 /**
  * The {@code Particle} class represents a particle moving in the unit box,
@@ -26,6 +31,8 @@ public class Particle{
     private final double mass;    // mass
     private final Color color;    // color
 
+    public List<Particle> neighbors;
+
     public String toString(double width){
         return width * this.rx + " " + width * this.ry + " " + width * this.vx + " " + width * this.vy + "\n";
     }
@@ -45,6 +52,10 @@ public class Particle{
 
     public double v(){
         return Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+    }
+
+    public void calNeighbors(BHT tree){
+        this.neighbors = tree.getNeighbor(tree.find(this));
     }
 
     /**
@@ -134,7 +145,6 @@ public class Particle{
     }
 
 
-
     public void changeVelocity(double tick){
         this.ax = this.fx / mass;
         this.ay = this.fy / mass;
@@ -151,6 +161,31 @@ public class Particle{
         StdDraw.filledCircle(rx, ry, radius);
     }
 
+    public void predictByList(Particle a, BHT tree, PriorityBlockingQueue<Event> pq, double HZ, double t){
+        Collections.synchronizedList(tree.getNeighbor(tree.find(this)))
+                .stream()
+                .parallel()
+                .map(particle -> {
+                    particle.action(a, pq, HZ, t);
+                    return null;
+                });
+    }
+
+    public void predictWalls(PriorityBlockingQueue<Event> pq, double width, double HZ, double t){
+        double dtX = this.timeToHitVerticalWall(width);
+        double dtY = this.timeToHitHorizontalWall(width);
+        if(dtX >= 0 && dtX <= 1.0 / HZ) pq.add(new Event(t + dtX, this, null));
+        if(dtY >= 0 && dtY <= 1.0 / HZ) pq.add(new Event(t + dtY, null, this));
+    }
+
+
+
+    public void action(Particle b, PriorityBlockingQueue<Event> pq, double HZ, double t){
+        double dt = this.timeToHit(b);
+        if(dt >= 0 && dt <= 1.0 / HZ){
+            pq.add(new Event(t + dt, this, b));
+        }
+    }
 
     /**
      * Returns the number of collisions involving this particle with
@@ -276,6 +311,8 @@ public class Particle{
         vy = -vy;
         count++;
     }
+
+
 
     public double kineticEnergy(){
         return 0.5 * mass * (vx * vx + vy * vy);

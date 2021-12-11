@@ -101,9 +101,7 @@ public class CollisionSystem{
     // redraw all particles
     private void redraw(){
         StdDraw.clear();
-        for(int i = 0; i < particles.length; i++){
-            particles[i].draw();
-        }
+        Arrays.stream(particles).parallel().forEach(Particle::draw);
         StdDraw.show();
         StdDraw.pause(5);
     }
@@ -141,18 +139,23 @@ public class CollisionSystem{
             predict(particle);
         }
 
+
         while(!pq.isEmpty()){
             Event e = pq.remove();
             if(!e.isValid()) continue;
             // 牛顿摆怎么解决捏。
 
             // physical collision, so update positions, and then simulation clock
+            /**
+             * 检查点的检测
+             */
             if(hasCheckList){
                 if(e.time > checkTime && numToCheck > index){
 
                     for(int i = 0; i < particles.length; i++){
                         particles[i].move(checkTime - t);
                     }
+
                     t = checkTime;
 
                     this.recordAns(index, myAns, particles, checkParticlesList[index]);
@@ -201,17 +204,11 @@ public class CollisionSystem{
                 }
             }
 
+            /**
+             * 事件的处理
+             */
             for(Particle p : particles){
                 p.move(e.time - t);
-            }
-
-//            Arrays.stream(particles).forEach(particle -> particle.move(e.time - t));
-
-
-            //每次循环中move后重新建树
-            tree = new BHT(q);
-            for(Particle p : particles){
-                tree.insert(p);
             }
 
             t = e.time;
@@ -251,30 +248,33 @@ public class CollisionSystem{
             /**
              * 新的预测
              */
-            for(Particle particle : particles){
-                predictByTree(particle);
+
+            //每次循环中move后重新建树
+            tree = new BHT(q);
+
+            for(Particle p : particles){
+                tree.insert(p);
+                p.predictWalls(pq, width, HZ, t);
             }
 
-//            Arrays.asList(particles).parallelStream().forEach(this::predictByTree);
-        }
+//            Arrays.stream(particles).parallel().forEach(particle -> {
+//                tree.insert(particle);
+//                particle.predictWalls(pq, width, HZ, t);
+//            });
 
-    }
+//            for(Particle particle : particles){
+//                predictByTree(particle);
+//            }
 
-    public void handle(Event e){
-        // process event
-        Particle a = e.a;
-        Particle b = e.b;
-        if(a != null && b != null){
-            a.bounceOff(b);
-        }             // particle-particle collision
-        else if(a != null){
-            a.bounceOffVerticalWall();
-        }  // particle-wall collision
-        else if(b != null){
-            b.bounceOffHorizontalWall();
-        }// particle-wall collision
-        else{
-            redraw();
+
+            Arrays.stream(particles).parallel().forEach(particle -> {
+                particle.calNeighbors(tree);
+                particle.neighbors.forEach(x -> {
+                    x.action(particle, pq, HZ, t);
+                });
+            });
+
+//            System.out.println();
         }
     }
 
