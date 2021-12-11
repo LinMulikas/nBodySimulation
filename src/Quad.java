@@ -2,6 +2,18 @@ public class Quad{
 
     private double xmid, ymid, length;
 
+    public double getXmid() {
+        return xmid;
+    }
+
+    public double getYmid() {
+        return ymid;
+    }
+
+    public double getLength() {
+        return length;
+    }
+
     //Create a square quadrant with a given length and midpoints (xmid,ymid)
     public Quad(double xmid, double ymid, double length){
         this.xmid = xmid;
@@ -11,7 +23,7 @@ public class Quad{
 
     public Quad(double width){
         this.xmid = 0.5 * width;
-        this.xmid = 0.5 * width;
+        this.ymid = 0.5 * width;
         this.length = width;
     }
 

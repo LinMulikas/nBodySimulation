@@ -1,7 +1,7 @@
 import java.awt.Color;
 import java.io.*;
-import java.util.Scanner;
-import java.util.Timer;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 public class CollisionSystem{
@@ -9,11 +9,15 @@ public class CollisionSystem{
     private Quad q;
     private double[] checkTimeList;
     private int[] checkParticlesList;
-    private static final double HZ = 2;    // number of redraw events per clock tick
+    private static final double HZ = 5;    // number of redraw events per clock tick
     public final double G = 6.67259e-11;
     private MinPQ pq;          // the priority queue
     private double t = 0.0;           // simulation clock time
     private Particle[] particles;     // the array of particles
+
+    private ConcurrentLinkedQueue<Event> safePQ = new ConcurrentLinkedQueue<>();
+
+    private BHT tree; //用于存储所有节点的总树
 
     public int numToCheck;
     public double[][] ans;
@@ -41,6 +45,19 @@ public class CollisionSystem{
         this.q = new Quad(width);
     }
 
+    private void predictAction(Particle a, Particle b){
+        if(a == null) return;
+
+        double dt = a.timeToHit(b);
+        if(dt >= 0 && dt <= 1.0 / HZ){
+            pq.insert(new Event(t + dt, a, b));
+        }
+
+        double dtX = a.timeToHitVerticalWall(width);
+        double dtY = a.timeToHitHorizontalWall(width);
+        if(dtX >= 0 && dtX <= 1.0 / HZ) pq.insert(new Event(t + dtX, a, null));
+        if(dtY >= 0 && dtY <= 1.0 / HZ) pq.insert(new Event(t + dtY, null, a));
+    }
 
     /**
      * 设计一个小范围的误差浮动，尝试解决牛顿摆
@@ -50,13 +67,14 @@ public class CollisionSystem{
     private void predict(Particle a){
         if(a == null) return;
 
-        // particle-particle collisions
         for(int i = 0; i < particles.length; i++){
             double dt = a.timeToHit(particles[i]);
             if(dt >= 0 && dt <= 1.0 / HZ){
                 pq.insert(new Event(t + dt, a, particles[i]));
             }
         }
+
+
         // particle-wall collisions
         double dtX = a.timeToHitVerticalWall(width);
         double dtY = a.timeToHitHorizontalWall(width);
@@ -64,6 +82,20 @@ public class CollisionSystem{
         if(dtY >= 0 && dtY <= 1.0 / HZ) pq.insert(new Event(t + dtY, null, a));
     }
 
+    public void predictByTree(Particle a){
+        if(a == null) return;
+
+        //改为使用BHT进行预测
+        BHT b = tree.find(a);
+        tree.BHTPredict(b, pq, HZ, t);
+
+        // particle-wall collisions
+        double dtX = a.timeToHitVerticalWall(width);
+        double dtY = a.timeToHitHorizontalWall(width);
+        if(dtX >= 0 && dtX <= 1.0 / HZ) pq.insert(new Event(t + dtX, a, null));
+        if(dtY >= 0 && dtY <= 1.0 / HZ) pq.insert(new Event(t + dtY, null, a));
+
+    }
 
     // redraw all particles
     private void redraw(){
@@ -72,7 +104,7 @@ public class CollisionSystem{
             particles[i].draw();
         }
         StdDraw.show();
-
+        StdDraw.pause(5);
     }
 
 
@@ -94,6 +126,12 @@ public class CollisionSystem{
 
         pq.insert(new Event(0, null, null));        // redraw event
 
+        //初始化的建树
+        tree = new BHT(q);
+
+        for(Particle p : particles){
+            tree.insert(p);
+        }
 
         /**
          * 初始化的预测
@@ -149,12 +187,12 @@ public class CollisionSystem{
                             }
                         }
                         else{
-                            if(!guiContinue){
+                            if(!this.guiContinue){
                                 System.out.println("是否继续运行？（y/n）");
                                 Scanner in = new Scanner(System.in);
                                 String contin = in.next();
                                 if(contin.equals("y") || contin.equals("Y")){
-                                    guiContinue = true;
+                                    this.guiContinue = true;
                                 }
                             }
                         }
@@ -162,8 +200,17 @@ public class CollisionSystem{
                 }
             }
 
-            for(int i = 0; i < particles.length; i++){
-                particles[i].move(e.time - t);
+            for(Particle p : particles){
+                p.move(e.time - t);
+            }
+
+//            Arrays.stream(particles).forEach(particle -> particle.move(e.time - t));
+
+
+            //每次循环中move后重新建树
+            tree = new BHT(q);
+            for(Particle p : particles){
+                tree.insert(p);
             }
 
             t = e.time;
@@ -203,9 +250,18 @@ public class CollisionSystem{
             /**
              * 新的预测
              */
-            for(Particle particle : particles){
-                predict(particle);
-            }
+//            for(Particle particle : particles){
+//                predictByTree(particle);
+//            }
+
+//            for(Particle particle : particles){
+//                particle.parallelPredict(particle, tree, pq, width, HZ, t);
+//            }
+
+            List<Particle> list = Arrays.asList(particles);
+//            Collections.synchronizedList(list).parallelStream().forEach(this::predictByTree);
+
+            list.parallelStream().forEach(this::predictByTree);
         }
 
     }
@@ -232,11 +288,11 @@ public class CollisionSystem{
         /**
          * BHT
          */
-        BHT tree = new BHT(q);
-
-        for(Particle p : particles){
-            tree.insert(p);
-        }
+//        tree = new BHT(q);
+//
+//        for(Particle p : particles){
+//            tree.insert(p);
+//        }
 
         for(Particle p : particles){
             p.resetForce();
@@ -310,6 +366,7 @@ public class CollisionSystem{
         System.out.println("是否要读取文件？（y/n）");
         String fileRead = in.next();
 
+        // 读取文件
         if(fileRead.equals("y") || fileRead.equals("Y")){
             Particle[] particles = null;
 
@@ -358,18 +415,27 @@ public class CollisionSystem{
 
                 system.setWidth(width);
 
+                /**
+                 * 质点初始化
+                 */
                 particles = new Particle[number];
                 for(int i = 0; i < number; i++){
-                    String[] line = br.readLine().split("\\s");
-                    double rx = Double.parseDouble(line[0]);
-                    double ry = Double.parseDouble(line[1]);
-                    double vx = Double.parseDouble(line[2]);
-                    double vy = Double.parseDouble(line[3]);
-                    double radius = Double.parseDouble(line[4]);
-                    double mass = Double.parseDouble(line[5]);
-                    int r = Integer.parseInt(line[6]);
-                    int g = Integer.parseInt(line[6]);
-                    int b = Integer.parseInt(line[6]);
+                    String[] line0 = br.readLine().split("\\s");
+                    ArrayList<String> line = new ArrayList<>();
+                    for(String str : line0){
+                        if(!str.isEmpty()){
+                            line.add(str);
+                        }
+                    }
+                    double rx = Double.parseDouble(line.get(0));
+                    double ry = Double.parseDouble(line.get(1));
+                    double vx = Double.parseDouble(line.get(2));
+                    double vy = Double.parseDouble(line.get(3));
+                    double radius = Double.parseDouble(line.get(4));
+                    double mass = Double.parseDouble(line.get(5));
+                    int r = Integer.parseInt(line.get(6));
+                    int g = Integer.parseInt(line.get(7));
+                    int b = Integer.parseInt(line.get(8));
                     Color color = new Color(r, g, b);
                     particles[i] = new Particle(rx, ry, vx, vy, radius, mass, color);
                 }
@@ -379,14 +445,21 @@ public class CollisionSystem{
                 int numCheck = Integer.parseInt(strNumCheck);
                 system.numToCheck = numCheck;
 
+
                 double[] checkList = new double[numCheck];
                 int[] ids = new int[numCheck];
 
 
                 for(int i = 0; i < numCheck; i++){
-                    String[] line = br.readLine().split("\\s");
-                    checkList[i] = Double.parseDouble(line[0]);
-                    ids[i] = Integer.parseInt(line[1]);
+                    String[] line0 = br.readLine().split("\\s");
+                    ArrayList<String> line = new ArrayList<>();
+                    for(String str : line0){
+                        if(!str.isEmpty()){
+                            line.add(str);
+                        }
+                    }
+                    checkList[i] = Double.parseDouble(line.get(0));
+                    ids[i] = Integer.parseInt(line.get(1));
                 }
 
                 system.setCheckTimeList(checkList);
@@ -426,7 +499,6 @@ public class CollisionSystem{
 
 
             system.simulate(hasCheckList, hasAnswerList, GUI);
-
         }
         else{
             System.out.println("请输入标准格式的输入：");

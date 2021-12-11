@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+
 //改写BHTree
 public class BHT{
     private Particle particle;
@@ -42,21 +44,24 @@ public class BHT{
                     this.NW = new BHT(northwest);
                 }
                 NW.insert(b);
-            } else{
+            }
+            else{
                 Quad northeast = this.quad.NE();
                 if(b.in(northeast)){
                     if(this.NE == null){
                         this.NE = new BHT(northeast);
                     }
                     NE.insert(b);
-                } else{
+                }
+                else{
                     Quad southeast = this.quad.SE();
                     if(b.in(southeast)){
                         if(this.SE == null){
                             this.SE = new BHT(southeast);
                         }
                         SE.insert(b);
-                    } else{
+                    }
+                    else{
                         Quad southwest = this.quad.SW();
                         if(this.SW == null){
                             this.SW = new BHT(southwest);
@@ -77,21 +82,24 @@ public class BHT{
                     this.NW = new BHT(northwest);
                 }
                 NW.insert(c);
-            } else{
+            }
+            else{
                 Quad northeast = this.quad.NE();
                 if(c.in(northeast)){
                     if(this.NE == null){
                         this.NE = new BHT(northeast);
                     }
                     NE.insert(c);
-                } else{
+                }
+                else{
                     Quad southeast = this.quad.SE();
                     if(c.in(southeast)){
                         if(this.SE == null){
                             this.SE = new BHT(southeast);
                         }
                         SE.insert(c);
-                    } else{
+                    }
+                    else{
                         Quad southwest = this.quad.SW();
                         //测试用 避免飞出边界时RE
                         if(!c.in(southwest)) return;
@@ -114,13 +122,90 @@ public class BHT{
     public void updateForce(Particle b, double g){
         if(this.isExternal()){
             if(this.particle != b) b.addForceTo(this.particle, g);
-        } else if(this.quad.length() / (this.particle.distanceTo(b)) < 2){
+        }
+        else if(this.quad.length() / (this.particle.distanceTo(b)) < 2){
             b.addForceTo(this.particle, g);
-        } else{
+        }
+        else{
             if(this.NW != null) this.NW.updateForce(b, g);
             if(this.SW != null) this.SW.updateForce(b, g);
             if(this.SE != null) this.SE.updateForce(b, g);
             if(this.NE != null) this.NE.updateForce(b, g);
+        }
+    }
+
+    //返回该粒子所在的external节点
+    public BHT find(Particle p){
+        if(p == null) return null;
+        if(this.isExternal()){
+            return this;
+        }
+        else if(p.in(this.quad.NW())){
+            return this.NW.find(p);
+        }
+        else if(p.in(this.quad.NE())){
+            return this.NE.find(p);
+        }
+        else if(p.in(this.quad.SE())){
+            return this.SE.find(p);
+        }
+        else{
+            return this.SW.find(p);
+        }
+    }
+
+    //判断是否是相邻区域或相互包含的区域
+    public boolean adjacent(BHT that){
+        double d = 0.5 * this.quad.getLength() + 0.5 * that.quad.getLength();
+        return (Math.abs(this.quad.getXmid() - that.quad.getXmid()) <= d)
+                && (Math.abs(this.quad.getYmid() - that.quad.getYmid()) <= d);
+    }
+
+    //预测碰撞的实现 传入单个粒子所在的external节点
+    public void BHTPredict(BHT b, MinPQ pq, double HZ, double t){
+        if(this.isExternal() && this.adjacent(b)){
+            double dt = b.particle.timeToHit(this.particle);
+            if(dt >= 0 && dt <= 1.0 / HZ){
+                pq.insert(new Event(t + dt, b.particle, this.particle));
+            }
+        }
+        if((this.NW != null) && this.NW.adjacent(b)){
+            this.NW.BHTPredict(b, pq, HZ, t);
+        }
+        if((this.NE != null) && this.NE.adjacent(b)){
+            this.NE.BHTPredict(b, pq, HZ, t);
+        }
+        if((this.SE != null) && this.SE.adjacent(b)){
+            this.SE.BHTPredict(b, pq, HZ, t);
+        }
+        if((this.SW != null) && this.SW.adjacent(b)){
+            this.SW.BHTPredict(b, pq, HZ, t);
+        }
+    }
+
+    //寻找临近粒子 返回 临近粒子的集合 需要传入的参数：单个粒子所在的external节点
+    public ArrayList<Particle> getNeighbor(BHT b){
+        ArrayList<Particle> neighbors = new ArrayList<>();
+        findNeighbor(b, neighbors);
+        return neighbors;
+    }
+
+
+    public void findNeighbor(BHT b, ArrayList<Particle> neighbors){
+        if(this.isExternal() && this.adjacent(b)){
+            neighbors.add(this.particle);
+        }
+        if((this.NW != null) && this.NW.adjacent(b)){
+            this.NW.findNeighbor(b, neighbors);
+        }
+        if((this.NE != null) && this.NE.adjacent(b)){
+            this.NE.findNeighbor(b, neighbors);
+        }
+        if((this.SE != null) && this.SE.adjacent(b)){
+            this.SE.findNeighbor(b, neighbors);
+        }
+        if((this.SW != null) && this.SW.adjacent(b)){
+            this.SW.findNeighbor(b, neighbors);
         }
     }
 
