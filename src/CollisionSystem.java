@@ -2,6 +2,7 @@ import java.awt.Color;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 
 
 public class CollisionSystem{
@@ -11,7 +12,7 @@ public class CollisionSystem{
     private int[] checkParticlesList;
     private static final double HZ = 5;    // number of redraw events per clock tick
     public final double G = 6.67259e-11;
-    private MinPQ pq;          // the priority queue
+    private PriorityBlockingQueue<Event> pq;          // the priority queue
     private double t = 0.0;           // simulation clock time
     private Particle[] particles;     // the array of particles
 
@@ -50,13 +51,13 @@ public class CollisionSystem{
 
         double dt = a.timeToHit(b);
         if(dt >= 0 && dt <= 1.0 / HZ){
-            pq.insert(new Event(t + dt, a, b));
+            pq.add(new Event(t + dt, a, b));
         }
 
         double dtX = a.timeToHitVerticalWall(width);
         double dtY = a.timeToHitHorizontalWall(width);
-        if(dtX >= 0 && dtX <= 1.0 / HZ) pq.insert(new Event(t + dtX, a, null));
-        if(dtY >= 0 && dtY <= 1.0 / HZ) pq.insert(new Event(t + dtY, null, a));
+        if(dtX >= 0 && dtX <= 1.0 / HZ) pq.add(new Event(t + dtX, a, null));
+        if(dtY >= 0 && dtY <= 1.0 / HZ) pq.add(new Event(t + dtY, null, a));
     }
 
     /**
@@ -70,7 +71,7 @@ public class CollisionSystem{
         for(int i = 0; i < particles.length; i++){
             double dt = a.timeToHit(particles[i]);
             if(dt >= 0 && dt <= 1.0 / HZ){
-                pq.insert(new Event(t + dt, a, particles[i]));
+                pq.add(new Event(t + dt, a, particles[i]));
             }
         }
 
@@ -78,8 +79,8 @@ public class CollisionSystem{
         // particle-wall collisions
         double dtX = a.timeToHitVerticalWall(width);
         double dtY = a.timeToHitHorizontalWall(width);
-        if(dtX >= 0 && dtX <= 1.0 / HZ) pq.insert(new Event(t + dtX, a, null));
-        if(dtY >= 0 && dtY <= 1.0 / HZ) pq.insert(new Event(t + dtY, null, a));
+        if(dtX >= 0 && dtX <= 1.0 / HZ) pq.add(new Event(t + dtX, a, null));
+        if(dtY >= 0 && dtY <= 1.0 / HZ) pq.add(new Event(t + dtY, null, a));
     }
 
     public void predictByTree(Particle a){
@@ -92,8 +93,8 @@ public class CollisionSystem{
         // particle-wall collisions
         double dtX = a.timeToHitVerticalWall(width);
         double dtY = a.timeToHitHorizontalWall(width);
-        if(dtX >= 0 && dtX <= 1.0 / HZ) pq.insert(new Event(t + dtX, a, null));
-        if(dtY >= 0 && dtY <= 1.0 / HZ) pq.insert(new Event(t + dtY, null, a));
+        if(dtX >= 0 && dtX <= 1.0 / HZ) pq.add(new Event(t + dtX, a, null));
+        if(dtY >= 0 && dtY <= 1.0 / HZ) pq.add(new Event(t + dtY, null, a));
 
     }
 
@@ -113,7 +114,7 @@ public class CollisionSystem{
         long start = System.currentTimeMillis();
 
         // initialize PQ with collision events and redraw event
-        pq = new MinPQ();
+        pq = new PriorityBlockingQueue<Event>();
         double checkTime = 0;
         int index = 0;
 
@@ -124,7 +125,7 @@ public class CollisionSystem{
             errors = new double[numToCheck][4];
         }
 
-        pq.insert(new Event(0, null, null));        // redraw event
+        pq.add(new Event(0, null, null));        // redraw event
 
         //初始化的建树
         tree = new BHT(q);
@@ -141,7 +142,7 @@ public class CollisionSystem{
         }
 
         while(!pq.isEmpty()){
-            Event e = pq.delMin();
+            Event e = pq.remove();
             if(!e.isValid()) continue;
             // 牛顿摆怎么解决捏。
 
@@ -237,10 +238,10 @@ public class CollisionSystem{
 
 
             while(!pq.isEmpty()){
-                pq.delMin();
+                pq.remove();
             }
 
-            pq.insert(new Event(t + 1.0 / HZ, null, null));
+            pq.add(new Event(t + 1.0 / HZ, null, null));
 
             /**
              * 更新引力状态和速度状态
@@ -254,14 +255,7 @@ public class CollisionSystem{
                 predictByTree(particle);
             }
 
-//            for(Particle particle : particles){
-//                particle.parallelPredict(particle, tree, pq, width, HZ, t);
-//            }
-
-//            List<Particle> list = Arrays.asList(particles);
-//            Collections.synchronizedList(list).parallelStream().forEach(this::predictByTree);
-//
-//            list.parallelStream().forEach(this::predictByTree);
+//            Arrays.asList(particles).parallelStream().forEach(this::predictByTree);
         }
 
     }

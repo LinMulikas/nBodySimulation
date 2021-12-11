@@ -1,4 +1,6 @@
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 
 //改写BHTree
 public class BHT{
@@ -162,11 +164,11 @@ public class BHT{
     }
 
     //预测碰撞的实现 传入单个粒子所在的external节点
-    public void BHTPredict(BHT b, MinPQ pq, double HZ, double t){
+    public void BHTPredict(BHT b, PriorityBlockingQueue<Event> pq, double HZ, double t){
         if(this.isExternal() && this.adjacent(b)){
             double dt = b.particle.timeToHit(this.particle);
             if(dt >= 0 && dt <= 1.0 / HZ){
-                pq.insert(new Event(t + dt, b.particle, this.particle));
+                pq.add(new Event(t + dt, b.particle, this.particle));
             }
         }
         if((this.NW != null) && this.NW.adjacent(b)){
