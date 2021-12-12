@@ -1,6 +1,4 @@
 import java.awt.Color;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -55,8 +53,8 @@ public class Particle{
         return Math.sqrt(this.vx * this.vx + this.vy * this.vy);
     }
 
-    public void calNeighbors(BHT tree){
-        this.neighbors = tree.getNeighbor(tree.find(this));
+    public void calNeighbors(BarnesHutTree tree, int accuracy){
+        this.neighbors = tree.getNeighbor(tree.find(this), accuracy);
     }
 
 
@@ -104,20 +102,6 @@ public class Particle{
         this.fy = 0;
     }
 
-    /**
-     * Initializes a particle with a random position and velocity.
-     * The position is uniform in the unit box; the velocity in
-     * either direciton is chosen uniformly at random.
-     */
-    public Particle(double width){
-        rx = StdRandom.uniform(0.0, width);
-        ry = StdRandom.uniform(0.0, width);
-        vx = StdRandom.uniform(-0.002, 0.02);
-        vy = StdRandom.uniform(-0.002, 0.02);
-        radius = 0.02;
-        mass = 1000000;
-        color = Color.BLACK;
-    }
 
     /**
      * Moves this particle in a straight line (based on its velocity)
@@ -179,8 +163,8 @@ public class Particle{
         StdDraw.filledCircle(rx, ry, radius);
     }
 
-    public void predictByList(Particle a, BHT tree, PriorityBlockingQueue<Event> pq, double HZ, double t){
-        Collections.synchronizedList(tree.getNeighbor(tree.find(this)))
+    public void predictByList(Particle a, BarnesHutTree tree, int accuracy, PriorityBlockingQueue<Event> pq, double HZ, double t){
+        Collections.synchronizedList(tree.getNeighbor(tree.find(this), accuracy))
                 .stream()
                 .parallel()
                 .map(particle -> {
